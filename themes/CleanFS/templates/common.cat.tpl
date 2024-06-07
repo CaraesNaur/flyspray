@@ -46,6 +46,14 @@ $categories = $proj->listCategories($proj->id, false, false, false);
 if ( count($categories) ){
   $root = $categories[0];
   unset($categories[0]);
+
+  if ((count($categories)*6 + 4) > ini_get('max_input_vars')) {
+?>
+<div class="error">A category tree update of this size requires sending more than <strong><?= ini_get('max_input_vars') ?></strong> key-value pairs (PHP ini setting <i>max_input_vars</i>).
+But the current size for an update requires up to <?= (count($categories)*6 + 4) ?> key-value pairs.
+Increase <strong>max_input_vars</strong> PHP ini setting before doing any update of this category tree! Otherwise you maybe get a messed up category tree in the database!</div>
+<?php   
+  }
 } else{
   $root=array();
 }
@@ -54,11 +62,11 @@ if (count($categories)) : ?>
 <div id="controlBox">
   <div class="grip"></div>
   <div class="inner">
-      <a href="#" onclick="TableControl.up('catTable'); return false;"><img src="<?php echo Filters::noXSS($this->themeUrl()); ?>/up.png" alt="Up" /></a>
-      <a href="#" onclick="TableControl.down('catTable'); return false;"><img src="<?php echo Filters::noXSS($this->themeUrl()); ?>/down.png" alt="Down" /></a>
-      <a href="#" onclick="TableControl.shallower('catTable'); return false;"><img src="<?php echo Filters::noXSS($this->themeUrl()); ?>/left.png" alt="Left" /></a>
-      <a href="#" onclick="TableControl.deeper('catTable'); return false;"><img src="<?php echo Filters::noXSS($this->themeUrl()); ?>/right.png" alt="Right" /></a>
-  </div>
+    <a style="display:block;text-align:center;" href="#" onclick="TableControl.up('catTable'); return false;"><img src="<?php echo Filters::noXSS($this->themeUrl()); ?>/up.png" alt="Up" /></a>   
+    <a href="#" onclick="TableControl.shallower('catTable'); return false;"><img src="<?php echo Filters::noXSS($this->themeUrl()); ?>/left.png" alt="Left" /></a>
+    <a href="#" onclick="TableControl.deeper('catTable'); return false;"><img src="<?php echo Filters::noXSS($this->themeUrl()); ?>/right.png" alt="Right" /></a>
+    <a style="display:block;text-align:center;" href="#" onclick="TableControl.down('catTable'); return false;"><img src="<?php echo Filters::noXSS($this->themeUrl()); ?>/down.png" alt="Down" /></a>
+</div>
 </div>
 <?php endif; ?>
 <?php echo tpl_form(Filters::noXSS(CreateURL($do, 'cat', $proj->id))); ?>

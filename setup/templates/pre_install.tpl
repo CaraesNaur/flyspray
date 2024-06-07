@@ -16,9 +16,21 @@
 		<td align="left"><b><?php echo $php_output; ?></b></td>
 		<td>&nbsp;</td>
 	</tr>
+	
 	<tr>
 		<td>XML Extension</td>
 		<td align="left"><b><?php echo Setup::ReturnStatus($xmlStatus); ?></b></td>
+		<td>&nbsp;</td>
+	</tr>
+	<tr>
+		<?php /* Some minimal distros like 'Alpine Linux' have not the ctype extension installed/enabled by default */ ?>
+		<td>ctype Extension</td>
+		<td align="left"><b><?php echo Setup::ReturnStatus(extension_loaded('ctype'), 'yes'); ?></b></td>
+		<td>&nbsp;</td>
+	</tr>
+	<tr>
+		<td>mbstring Extension</td>
+		<td align="left"><b><?php echo Setup::ReturnStatus(extension_loaded('mbstring'), 'yes'); ?></b></td>
 		<td>&nbsp;</td>
 	</tr>
 	<tr>
@@ -87,6 +99,11 @@
 		<tr>
 			<td valign="top">../attachments</td>
 			<td align="left"><b><?php echo $att_output; ?></b></td>
+			<td>&nbsp;</td>
+		</tr>
+		<tr>
+			<td valign="top">../avatars</td>
+			<td align="left"><b><?php echo $ava_output; ?></b></td>
 			<td>&nbsp;</td>
 		</tr>
 		</table>

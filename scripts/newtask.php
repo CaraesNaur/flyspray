@@ -15,7 +15,7 @@ if (!$user->can_open_task($proj)) {
 
 $page->setTitle($fs->prefs['page_title'] . $proj->prefs['project_title'] . ': ' . L('newtask'));
 
-$result = $db->Query('
+$result = $db->query('
   SELECT u.user_id, u.user_name, u.real_name, g.group_id, g.group_name, g.project_id
   FROM {users} u
   JOIN {users_in_groups} uig ON u.user_id = uig.user_id
@@ -26,7 +26,7 @@ $result = $db->Query('
 
 $userlist = array();
 $userids=array();
-while ($row = $db->FetchRow($result)) {
+while ($row = $db->fetchRow($result)) {
   if (!in_array($row['user_id'], $userids)){
     $userlist[$row['group_id']][] = array(
       0 => $row['user_id'],
@@ -41,11 +41,30 @@ while ($row = $db->FetchRow($result)) {
 }
 
 $assignees = array();
-if (is_array(Post::val('rassigned_to'))) {
-    $assignees = Post::val('rassigned_to');
+if (isset($_POST['rassigned_to']) && is_array($_POST['rassigned_to'])) {
+	foreach	($_POST['rassigned_to'] as $ass) {
+		if (is_numeric($ass)) {
+			$assignees[] = $ass;
+		}
+	}
 }
-
 $page->assign('assignees', $assignees);
+
+# tag choose helper
+$taglist = array();
+if ($proj->prefs['use_tags']) {
+	$restaglist=$db->query('
+		SELECT * FROM {list_tag}
+		WHERE (project_id=0 OR project_id=?)
+		AND show_in_list=1
+		ORDER BY list_position ASC',
+		array($proj->id)
+	);
+	$taglist=$db->fetchAllArray($restaglist);
+	
+}
+$page->assign('taglist', $taglist);
+
 $page->assign('userlist', $userlist);
 $page->assign('old_assigned', '');
 $page->pushTpl('newtask.tpl');

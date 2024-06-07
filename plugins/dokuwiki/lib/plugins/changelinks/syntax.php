@@ -2,8 +2,8 @@
 /**
  * Change-Interwikilinks Plugin
  *
- * @license    GPL 2 (http://www.gnu.org/licenses/gpl.html)
- * @author     Florian Schmitz floele at gmail dot com
+ * @license GPL 2 (http://www.gnu.org/licenses/gpl.html)
+ * @author Florian Schmitz
  */
  
 if(!defined('DOKU_INC')) define('DOKU_INC',realpath(dirname(__FILE__).'/../../').'/');
@@ -22,7 +22,7 @@ class syntax_plugin_changelinks extends DokuWiki_Syntax_Plugin {
     function getInfo(){
         return array(
             'author' => 'Florian Schmitz',
-            'email'  => 'floele@gmail.com',
+            'email'  => '',
             'date'   => '2005-12-18',
             'name'   => 'Change-Interwikilinks Plugin',
             'desc'   => 'Changes the functionality of interwikilinks',
@@ -116,13 +116,18 @@ class syntax_plugin_changelinks extends DokuWiki_Syntax_Plugin {
     /**
      * Create output
      */
-    function render($mode, &$renderer, $data) {
-        if($mode == 'xhtml') {
+    function render($mode, &$renderer, $data)
+    {
+        if ($mode == 'xhtml') {
             global $conf;
+            # workaround for php8.0+ , sometimes $data is null
+            if(!is_array($data)){ 
+                return false;
+            }
             $id = $data[0];
             $name = $data[1];
            
-            //prepare for formating
+            // prepare for formatting
             $link['target'] = $conf['target']['wiki'];
             $link['style']  = '';
             $link['pre']    = '';
@@ -130,15 +135,22 @@ class syntax_plugin_changelinks extends DokuWiki_Syntax_Plugin {
             $link['more']   = '';
             $link['class']  = 'internallink';
             $link['url']    = DOKU_INTERNAL_LINK . $id;
-            $link['name']   = ($name) ? $name : $id;
-            $link['title']  = ($name) ? $name : $id;
+         
+            if (is_array($name)) {
+               $link['name'] = (isset($name['title'])) ? hsc($name['title']) : hsc($id);
+               $link['title'] = $id;
+            } else {
+               $link['name'] = ($name) ? hsc($name) : hsc($id);
+               $link['title'] = ($name) ? $name : $id;
+            }
+
             //add search string
-            if($search){
+            if (isset($search)) {
                 ($conf['userewrite']) ? $link['url'].='?s=' : $link['url'].='&amp;s=';
                 $link['url'] .= urlencode($search);
             }
     
-            //output formatted
+            // output formatted
             $renderer->doc .= $renderer->_formatLink($link);
         }
         return true;
