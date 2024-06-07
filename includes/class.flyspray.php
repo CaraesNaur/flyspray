@@ -17,108 +17,102 @@
 class Flyspray
 {
 
-	/**
-	 * Current Flyspray version. Change this for each release.  Don't forget!
-	 * @access public
-	 * @var string
-	 * For github development use e.g. '1.0-beta dev' ; Flyspray::base_version() currently splits on the ' ' ...
-	 * For making github release use e.g. '1.0-beta' here.
-	 * For online version check www.flyspray.org/version.txt use e.g. '1.0-beta'
-	 * For making releases on github use github's recommended versioning e.g. 'v1.0-beta' --> release files are then named v1.0-beta.zip and v1.0-beta.tar.gz and unzips to a flyspray-1.0-beta/ directory.
-	 * Well, looks like a mess but hopefully consolidate this in future. Maybe use version_compare() everywhere in future instead of an own invented Flyspray::base_version()
-	 */
-	public $version = '1.0-rc12 dev';
+    /**
+     * Current Flyspray version. Change this for each release.  Don't forget!
+     * @access public
+     * @var string
+     * For github development use e.g. '1.0-beta dev' ; Flyspray::base_version() currently splits on the ' ' ...
+     * For making github release use e.g. '1.0-beta' here.
+     * For online version check www.flyspray.org/version.txt use e.g. '1.0-beta'
+     * For making releases on github use github's recommended versioning e.g. 'v1.0-beta' --> release files are then named v1.0-beta.zip and v1.0-beta.tar.gz and unzips to a flyspray-1.0-beta/ directory.
+     * Well, looks like a mess but hopefully consolidate this in future. Maybe use version_compare() everywhere in future instead of an own invented Flyspray::base_version()
+     */
+	public $version = '1.0-rc5 dev';
 
-	/**
-	 * Flyspray preferences
-	 * @access public
-	 * @var array
-	 */
-	public $prefs = array();
+    /**
+     * Flyspray preferences
+     * @access public
+     * @var array
+     */
+    public $prefs = array();
 
-	/**
-	 * Max. file size for file uploads. 0 = no uploads allowed
-	 * @access public
-	 * @var integer
-	 */
-	public $max_file_size = 0;
+    /**
+     * Max. file size for file uploads. 0 = no uploads allowed
+     * @access public
+     * @var integer
+     */
+    public $max_file_size = 0;
 
-	/**
-	 * List of projects the user is allowed to view
-	 * @access public
-	 * @var array
-	 */
-	public $projects = array();
+    /**
+     * List of projects the user is allowed to view
+     * @access public
+     * @var array
+     */
+    public $projects = array();
 
-	/**
-	 * List of severities. Loaded in i18n.inc.php
-	 * @access public
-	 * @var array
-	 */
-	public $severities = array();
+    /**
+     * List of severities. Loaded in i18n.inc.php
+     * @access public
+     * @var array
+     */
+    public $severities = array();
 
-	/**
-	 * List of priorities. Loaded in i18n.inc.php
-	 * @access public
-	 * @var array
-	 */
-	public $priorities = array();
+    /**
+     * List of priorities. Loaded in i18n.inc.php
+     * @access public
+     * @var array
+     */
+    public $priorities = array();
 
-	/**
-	* Constructor, starts session, loads settings
-	* @access private
-	* @return void
-	* @version 1.0
-	*/
-	public function __construct()
-	{
-		global $db;
+    // Application-wide preferences {{{
+    /**
+     * Constructor, starts session, loads settings
+     * @access private
+     * @return void
+     * @version 1.0
+     */
+    public function __construct()
+    {
+        global $db;
 
-		$this->startSession();
+        $this->startSession();
 
-		$res = $db->query('SELECT pref_name, pref_value FROM {prefs}');
+        $res = $db->Query('SELECT pref_name, pref_value FROM {prefs}');
 
-		while ($row = $db->fetchRow($res)) {
-			$this->prefs[$row['pref_name']] = $row['pref_value'];
-		}
+        while ($row = $db->FetchRow($res)) {
+            $this->prefs[$row['pref_name']] = $row['pref_value'];
+        }
 
-		$this->setDefaultTimezone();
+        $this->setDefaultTimezone();
 
-		// only needed to calculate max_file_size if uploads are allowed by PHP configuration
-		if (ini_get('file_uploads')) {
-		
-			$sizes = array();
-			foreach (array(ini_get('memory_limit'), ini_get('post_max_size'), ini_get('upload_max_filesize')) as $val) {
-				if($val === '-1') {
-					// unlimited value in php configuration
-					$val = PHP_INT_MAX;
-				}
-				if (!$val || $val < 0) {
-					continue;
-				}
-
-				if (!is_int($val)) {
-					$last = strtolower($val[strlen($val)-1]);
-					$val = trim($val, 'gGmMkK');
-					switch ($last) {
-						case 'g':
-							$val *= 1024;
-						case 'm':
-							$val *= 1024;
-						case 'k':
-							$val *= 1024;
-					}
-				}
-				$sizes[] = $val;
+        $sizes = array();
+        foreach (array(ini_get('memory_limit'), ini_get('post_max_size'), ini_get('upload_max_filesize')) as $val) {
+        	if($val === '-1'){
+				// unlimited value in php configuration
+				$val = PHP_INT_MAX;
 			}
+            if (!$val || $val < 0) {
+                continue;
+            }
 
-			clearstatcache();
-			$this->max_file_size = (
-				is_file(BASEDIR.DIRECTORY_SEPARATOR.'attachments'.DIRECTORY_SEPARATOR.'index.html')
-				&& is_writable(BASEDIR.DIRECTORY_SEPARATOR.'attachments')
-				) ? round((min($sizes)/1024/1024), 1) : 0;
-		}
-	}
+            $last = strtolower($val{strlen($val)-1});
+            $val = trim($val, 'gGmMkK');
+            switch ($last) {
+                // The 'G' modifier is available since PHP 5.1.0
+                case 'g':
+                    $val *= 1024;
+                case 'm':
+                    $val *= 1024;
+                case 'k':
+                    $val *= 1024;
+            }
+
+            $sizes[] = $val;
+        }
+        clearstatcache();
+        $func = create_function('$x', 'return @is_file($x . "/index.html") && is_writable($x);');
+        $this->max_file_size = ((bool) ini_get('file_uploads') && $func(BASEDIR . '/attachments')) ? round((min($sizes)/1024/1024), 1) : 0;
+    } // }}}
 
     protected function setDefaultTimezone()
     {
@@ -145,6 +139,8 @@ class Flyspray
         return $cfile;
     }
 
+
+    // {{{ Redirect to $url
     /**
      * Redirects the browser to the page in $url
      * This function is based on PEAR HTTP class
@@ -156,7 +152,7 @@ class Flyspray
      * @return bool
      * @version 1.0
      */
-    public static function redirect($url, $exit = true, $rfc2616 = true)
+    public static function Redirect($url, $exit = true, $rfc2616 = true)
     {
 
         @ob_clean();
@@ -169,7 +165,7 @@ class Flyspray
             die('Headers are already sent, this should not have happened. Please inform Flyspray developers.');
         }
 
-        $url = Flyspray::absoluteURI($url);
+        $url = FlySpray::absoluteURI($url);
 
 	if($_SERVER['REQUEST_METHOD']=='POST' && version_compare(PHP_VERSION, '5.4.0')>=0 ) {
 		http_response_code(303);
@@ -186,7 +182,7 @@ class Flyspray
         }
 
         return true;
-    }
+    } // }}}
 
     /**
      * Absolute URI (This function is part of PEAR::HTTP licensed under the BSD) {{{
@@ -262,17 +258,17 @@ class Flyspray
         $server = $protocol .'://'. $host . (isset($port) ? ':'. $port : '');
 
 
-        if (!strlen($url) || $url[0] == '?' || $url[0] == '#') {
+        if (!strlen($url) || $url{0} == '?' || $url{0} == '#') {
             $uri = isset($_SERVER['REQUEST_URI']) ?
                 $_SERVER['REQUEST_URI'] : $_SERVER['PHP_SELF'];
-            if ($url && $url[0] == '?' && false !== ($q = strpos($uri, '?'))) {
+            if ($url && $url{0} == '?' && false !== ($q = strpos($uri, '?'))) {
                 $url = substr($uri, 0, $q) . $url;
             } else {
                 $url = $uri . $url;
             }
         }
 
-        if ($url[0] == '/') {
+        if ($url{0} == '/') {
             return $server . $url;
         }
 
@@ -289,8 +285,9 @@ class Flyspray
         }
 
         return $server . $path . $url;
-    }
+    } // }}}
 
+    // Duplicate submission check {{{
     /**
      * Test to see if user resubmitted a form.
      * Checks only newtask and addcomment actions.
@@ -322,8 +319,8 @@ class Flyspray
         }
       }
         return false;
-    }
-
+    } // }}}
+    // Retrieve task details {{{
     /**
      * Gets all information about a task (and caches information if wanted)
      * @param integer $task_id
@@ -332,7 +329,7 @@ class Flyspray
      * @return mixed an array with all taskdetails or false on failure
      * @version 1.0
      */
-   public static function getTaskDetails($task_id, $cache_enabled = false)
+   public static  function GetTaskDetails($task_id, $cache_enabled = false)
     {
         global $db, $fs;
 
@@ -343,12 +340,12 @@ class Flyspray
         }
 
         //for some reason, task_id is not here
-        // run away immediately..
+        // run away inmediately..
         if(!is_numeric($task_id)) {
             return false;
         }
 
-        $get_details = $db->query('SELECT t.*, p.*,
+        $get_details = $db->Query('SELECT t.*, p.*,
                                           c.category_name, c.category_owner, c.lft, c.rgt, c.project_id as cproj,
                                           o.os_name,
                                           r.resolution_name,
@@ -373,11 +370,11 @@ class Flyspray
                                LEFT JOIN  {users}              uc ON t.closed_by = uc.user_id
                                    WHERE  t.task_id = ?', array($task_id));
 
-        if (!$db->countRows($get_details)) {
+        if (!$db->CountRows($get_details)) {
             return false;
         }
 
-        if ($get_details = $db->fetchRow($get_details)) {
+        if ($get_details = $db->FetchRow($get_details)) {
             $get_details += array('severity_name' => $get_details['task_severity']==0 ? '' : $fs->severities[$get_details['task_severity']]);
             $get_details += array('priority_name' => $get_details['task_priority']==0 ? '' : $fs->priorities[$get_details['task_priority']]);
         }
@@ -385,22 +382,16 @@ class Flyspray
 	$get_details['tags'] = Flyspray::getTags($task_id);
 
         $get_details['assigned_to'] = $get_details['assigned_to_name'] = array();
-        if ($assignees = Flyspray::getAssignees($task_id, true)) {
+        if ($assignees = Flyspray::GetAssignees($task_id, true)) {
             $get_details['assigned_to'] = $assignees[0];
             $get_details['assigned_to_name'] = $assignees[1];
         }
-	
-		/**
-		 * prevent RAM growing array like creating 100000 tasks with Backend::create_task() in a loop (Tests)
-		 * Costs maybe some SQL queries if getTaskDetails is called first without $cache_enabled
-		 * and later with $cache_enabled within same request
-		 */
-		if($cache_enabled){
-			$cache[$task_id] = $get_details;
-		}
-		return $get_details;
-	}
+        $cache[$task_id] = $get_details;
 
+        return $get_details;
+    } // }}}
+
+	// List projects {{{
 	/**
 	* Returns a list of all projects
 	* @param bool $active_only show only active projects
@@ -421,10 +412,11 @@ class Flyspray
 
 		$query .= ' ORDER BY project_is_active DESC, project_id DESC'; # active first, latest projects first for option groups and new projects are probably the most used.
 
-		$sql = $db->query($query);
+		$sql = $db->Query($query);
 		return $db->fetchAllArray($sql);
-	}
+	} // }}}
     
+    // List themes {{{
     /**
      * Returns a list of all themes
      * @access public static
@@ -437,9 +429,7 @@ class Flyspray
         $dirname = dirname(dirname(__FILE__));
         if ($handle = opendir($dirname . '/themes/')) {
             while (false !== ($file = readdir($handle))) {
-                if (substr($file,0,1) != '.' && is_dir("$dirname/themes/$file")
-		    && (is_file("$dirname/themes/$file/theme.css") || is_dir("$dirname/themes/$file/templates"))
-		   ) {
+                if (substr($file,0,1) != '.' && is_dir("$dirname/themes/$file") && is_file("$dirname/themes/$file/theme.css")) {
                     $themes[] = $file;
                 }
             }
@@ -451,8 +441,8 @@ class Flyspray
 		array_unshift($themes, 'CleanFS');
 		$themes = array_unique($themes);
         return $themes;
-    }
-
+    } // }}}
+    // List a project's group {{{
     /**
      * Returns a list of global groups or a project's groups
      * @param integer $proj_id
@@ -463,235 +453,38 @@ class Flyspray
     public static function listGroups($proj_id = 0)
     {
 	global $db;
-	$res = $db->query('SELECT g.*, COUNT(uig.user_id) AS users
+	$res = $db->Query('SELECT g.*, COUNT(uig.user_id) AS users
 		FROM {groups} g
 		LEFT JOIN {users_in_groups} uig ON uig.group_id=g.group_id
 		WHERE project_id = ?
 		GROUP BY g.group_id
 		ORDER BY g.group_id ASC', array($proj_id));
-        return $db->fetchAllArray($res);
+        return $db->FetchAllArray($res);
+    } // }}}
+
+    // Get info on all users {{{
+    /**
+     * Returns a list of a all users
+     * @access public static
+     * @return array
+     * @version 1.0
+     */
+    public static function listUsers()
+    {
+        global $db;
+        $res = $db->Query('SELECT account_enabled, user_id, user_name, real_name,
+		email_address, jabber_id, oauth_provider, oauth_uid,
+		notify_type, notify_own, notify_online,
+		tasks_perpage, lang_code, time_zone, dateformat, dateformat_extended,
+		register_date, login_attempts, lock_until,
+		profile_image, hide_my_email
+		FROM {users}
+		ORDER BY account_enabled DESC, UPPER(user_name) ASC');
+        return $db->FetchAllArray($res);
     }
 
-	/**
-	 * Returns a list of a all users
-	 *
-	 * @access public static
-	 * @param array $opts optional filter and verbosity of user infos
-	 *              $opts=array(
-	 *                  offset => unset|integer,
-	 *                  perpage => unset|integer,
-	 *                  status => unset|0|1,
-	 *                  namesearch => unset|string,
-	 *                  mailsearch => unset|string,
-	 *                  stats => unset|isset
-	 *                  order => unset|string (one of allowed sortable fields)
-	 *                  sort => unset|desc
-	 *              )
-	 * @return array
-	 * @version 1.0
-	 */
-	public static function listUsers($opts = array())
-	{
-		global $db;
-
-		if (!isset($opts['offset'])) {
-			$opts['offset'] = 0;
-		}
-
-		if (!isset($opts['perpage'])) {
-			# default max_input_vars of PHP is 1000, so 1 checkbox per user + other/hidden/submitbutton form vars <= max_input_vars
-			# we now have filterable userlist, 100 per page seems ok.
-			$opts['perpage'] = 100;
-		}
-
-		$sortable = array(
-			'regdate' => 'register_date',
-			'lastlogin' => 'last_login',
-			'username' => 'user_name',
-			'realname' => 'real_name',
-			'emailaddress' => 'email_address',
-			'jabberid' => 'jabber_id'
-		);
-
-		$filter = array();
-		$params = array();
-		
-		if (isset($opts['status']) && ($opts['status']===1 || $opts['status']===0)) {
-			$filter[] = 'account_enabled = '.$opts['status'];
-		}
-
-		if (isset($opts['namesearch']) && is_string($opts['namesearch']) && ($opts['namesearch']!='')) {
-			$filter[] = "(user_name LIKE ? OR real_name LIKE ?)";
-			$params[] = $opts['namesearch'];
-			$params[] = $opts['namesearch'];
-		}
-		
-		/**
-		 * @note currently only primary email address in {users}, not {user_emails}
-		 * @todo when doing table user_emails review, see reopened FS#1812
-		 */
-		if (isset($opts['mailsearch']) && is_string($opts['mailsearch']) && ($opts['mailsearch']!='')) {
-			$filter[] = "email_address LIKE ?";
-			$params[] = $opts['mailsearch'];
-		}
-
-		if (count($filter)) {
-			$where = "\nWHERE ".implode( "\nAND " , $filter);
-			$having = "\nHAVING ".implode( "\nAND " , $filter);
-		} else {
-			$where = '';
-			$having = '';
-		}
-
-		if (isset($opts['order']) && is_string($opts['order']) && array_key_exists($opts['order'], $sortable)) {
-			$orderby = "\nORDER BY ".$sortable[$opts['order']];
-			if (isset($opts['sort']) && $opts['sort'] ==='desc') {
-				$orderby.= ' DESC';
-			}
-		} else {
-			$orderby = "\nORDER BY account_enabled DESC, user_name ASC";
-		}
-
-		if (!isset($opts['stats'])) {
-			$sql = 'SELECT account_enabled, user_id, user_name, real_name,
-				email_address, jabber_id, oauth_provider, oauth_uid,
-				notify_type, notify_own, notify_online,
-				tasks_perpage, lang_code, time_zone, dateformat, dateformat_extended,
-				register_date, login_attempts, lock_until,
-				profile_image, hide_my_email, last_login
-				FROM {users}';
-			$sql .= $where;
-			$sql .= $orderby;
-			
-		} else {
-			# Well, this is a big and slow query, but the current solution I found.
-			# If you know a more elegant for calculating user stats from the different tables with one query let us know!
-			$sql = '
-SELECT
-MIN(u.account_enabled) AS account_enabled,
-MIN(u.user_id) AS user_id,
-MIN(u.user_name) AS user_name,
-MIN(u.real_name) AS real_name,
-MIN(u.email_address) AS email_address,
-MIN(u.jabber_id) AS jabber_id,
-MIN(u.oauth_provider) AS oauth_provider,
-MIN(u.oauth_uid) AS oauth_uid,
-MIN(u.notify_type) AS notify_type,
-MIN(u.notify_own) AS notify_own,
-MIN(u.notify_online) AS notify_online,
-MIN(u.tasks_perpage) AS tasks_perpage,
-MIN(u.lang_code) AS lang_code,
-MIN(u.time_zone) AS time_zone,
-MIN(u.dateformat) AS dateformat,
-MIN(u.dateformat_extended) AS dateformat_extended,
-MIN(u.register_date) AS register_date,
-MIN(u.login_attempts) AS login_attempts,
-MIN(u.lock_until) AS lock_until,
-MIN(u.profile_image) AS profile_image,
-MIN(u.hide_my_email) AS hide_my_email,
-MIN(u.last_login) AS last_login,
-SUM(countopen) AS countopen,
-SUM(countclose) AS countclose,
-SUM(countlastedit) AS countlastedit,
-SUM(comments) AS countcomments,
-SUM(assigned) AS countassign,
-SUM(watching) AS countwatching,
-SUM(votes) AS countvotes
-FROM
-(	SELECT u.account_enabled, u.user_id, u.user_name, u.real_name,
-        u.email_address, u.jabber_id, u.oauth_provider, u.oauth_uid,
-        u.notify_type, u.notify_own, u.notify_online,
-        u.tasks_perpage, u.lang_code, u.time_zone, u.dateformat, u.dateformat_extended,
-        u.register_date, u.login_attempts, u.lock_until,
-        u.profile_image, u.hide_my_email, u.last_login,
-        COUNT(topen.opened_by) AS countopen, 0 AS countclose, 0 AS countlastedit, 0 AS comments, 0 AS assigned, 0 AS watching, 0 AS votes
-        FROM {users} u
-        LEFT JOIN {tasks} topen ON topen.opened_by=u.user_id
-        GROUP BY u.user_id
-UNION
-       	SELECT u.account_enabled, u.user_id, u.user_name, u.real_name,
-        u.email_address, u.jabber_id, u.oauth_provider, u.oauth_uid,
-        u.notify_type, u.notify_own, u.notify_online,
-        u.tasks_perpage, u.lang_code, u.time_zone, u.dateformat, u.dateformat_extended,
-        u.register_date, u.login_attempts, u.lock_until,
-        u.profile_image, u.hide_my_email, u.last_login,
-        0, COUNT(tclose.closed_by) AS countclose, 0, 0, 0, 0, 0
-        FROM {users} u
-        LEFT JOIN {tasks} tclose ON tclose.closed_by=u.user_id
-        GROUP BY u.user_id
-UNION
-        SELECT u.account_enabled, u.user_id, u.user_name, u.real_name,
-        u.email_address, u.jabber_id, u.oauth_provider, u.oauth_uid,
-        u.notify_type, u.notify_own, u.notify_online,
-        u.tasks_perpage, u.lang_code, u.time_zone, u.dateformat, u.dateformat_extended,
-        u.register_date, u.login_attempts, u.lock_until,
-        u.profile_image, u.hide_my_email, u.last_login,
-        0, 0, COUNT(tlast.last_edited_by) AS countlastedit, 0, 0, 0, 0
-        FROM {users} u
-        LEFT JOIN {tasks} tlast ON tlast.last_edited_by=u.user_id
-        GROUP BY u.user_id
-UNION
-     	SELECT u.account_enabled, u.user_id, u.user_name, u.real_name,
-        u.email_address, u.jabber_id, u.oauth_provider, u.oauth_uid,
-        u.notify_type, u.notify_own, u.notify_online,
-        u.tasks_perpage, u.lang_code, u.time_zone, u.dateformat, u.dateformat_extended,
-        u.register_date, u.login_attempts, u.lock_until,
-        u.profile_image, u.hide_my_email, u.last_login,
-        0, 0, 0, COUNT(c.user_id) AS comments, 0, 0, 0
-        FROM {users} u
-        LEFT JOIN {comments} c ON c.user_id=u.user_id
-        GROUP BY u.user_id
-UNION
-     	SELECT u.account_enabled, u.user_id, u.user_name, u.real_name,
-        u.email_address, u.jabber_id, u.oauth_provider, u.oauth_uid,
-        u.notify_type, u.notify_own, u.notify_online,
-        u.tasks_perpage, u.lang_code, u.time_zone, u.dateformat, u.dateformat_extended,
-        u.register_date, u.login_attempts, u.lock_until,
-        u.profile_image, u.hide_my_email, u.last_login,
-        0, 0, 0, 0, COUNT(a.user_id) AS assigned, 0, 0
-        FROM {users} u
-        LEFT JOIN {assigned} a ON a.user_id=u.user_id
-        GROUP BY u.user_id
-UNION
-     	SELECT u.account_enabled, u.user_id, u.user_name, u.real_name,
-        u.email_address, u.jabber_id, u.oauth_provider, u.oauth_uid,
-        u.notify_type, u.notify_own, u.notify_online,
-        u.tasks_perpage, u.lang_code, u.time_zone, u.dateformat, u.dateformat_extended,
-        u.register_date, u.login_attempts, u.lock_until,
-        u.profile_image, u.hide_my_email, u.last_login,
-        0, 0, 0, 0, 0, COUNT(n.user_id) AS watching, 0
-        FROM {users} u
-        LEFT JOIN {notifications} n ON n.user_id=u.user_id
-        GROUP BY u.user_id
-UNION
-     	SELECT u.account_enabled, u.user_id, u.user_name, u.real_name,
-        u.email_address, u.jabber_id, u.oauth_provider, u.oauth_uid,
-        u.notify_type, u.notify_own, u.notify_online,
-        u.tasks_perpage, u.lang_code, u.time_zone, u.dateformat, u.dateformat_extended,
-        u.register_date, u.login_attempts, u.lock_until,
-        u.profile_image, u.hide_my_email, u.last_login,
-        0, 0, 0, 0, 0, 0, COUNT(v.user_id) AS votes
-        FROM {users} u
-        LEFT JOIN {votes} v ON v.user_id=u.user_id
-        GROUP BY u.user_id
-) u
-GROUP BY u.user_id';
-
-			$sql .= $having;
-			$orderby = "\nORDER BY MIN(u.account_enabled) DESC, MIN(u.user_name) ASC";
-			$sql .= $orderby;
-		}
-
-		$sqlcount=$db->query('SELECT COUNT(*) FROM ('.$sql.') u', $params);
-		$usercount=$db->fetchOne($sqlcount);
-		$res = $db->query($sql, $params, $opts['perpage'], $opts['offset']);
-		$users=$db->fetchAllArray($res);
-		return array(
-			'users'=>$users,
-			'count'=>$usercount
-		);
-	}
-
+    // }}}
+    // List languages {{{
     /**
      * Returns a list of installed languages
      * @access public static
@@ -701,10 +494,11 @@ GROUP BY u.user_id';
     public static function listLangs()
     {
         return str_replace('.php', '', array_map('basename', glob_compat(BASEDIR ."/lang/[a-zA-Z]*.php")));
-    }
 
+    } // }}}
+    // Log events to the history table {{{
     /**
-     * Saves an event to the {history} db table
+     * Saves an event to the database
      * @param integer $task_id
      * @param integer $type
      * @param string $newvalue
@@ -761,17 +555,17 @@ GROUP BY u.user_id';
                              ((!is_numeric($time)) ? time() : $time),
                               $type, $field, $oldvalue, $newvalue);
 
-        if($db->query('INSERT INTO {history} (task_id, user_id, event_date, event_type, field_changed,
+        if($db->Query('INSERT INTO {history} (task_id, user_id, event_date, event_type, field_changed,
                        old_value, new_value) VALUES (?, ?, ?, ?, ?, ?, ?)', $query_params)) {
 
                            return true;
          }
 
         return false;
-    }
-
+    } // }}}
+    // Log a request for an admin/project manager to do something {{{
     /**
-     * Adds an admin or project manager request to the database
+     * Adds an admin request to the database
      * @param integer $type 1: Task close, 2: Task re-open, 3: Pending user registration
      * @param integer $project_id
      * @param integer $task_id
@@ -781,14 +575,14 @@ GROUP BY u.user_id';
      * @return void
      * @version 1.0
      */
-    public static function adminRequest($type, $project_id, $task_id, $submitter, $reason)
+    public static function AdminRequest($type, $project_id, $task_id, $submitter, $reason)
     {
         global $db;
-        $db->query('INSERT INTO {admin_requests} (project_id, task_id, submitted_by, request_type, reason_given, time_submitted, deny_reason)
+        $db->Query('INSERT INTO {admin_requests} (project_id, task_id, submitted_by, request_type, reason_given, time_submitted, deny_reason)
                          VALUES (?, ?, ?, ?, ?, ?, ?)',
                     array($project_id, $task_id, $submitter, $type, $reason, time(), ''));
-    }
-
+    } // }}}
+    // Check for an existing admin request for a task and event type {{{;
     /**
      * Checks whether or not there is an admin request for a task
      * @param integer $type 1: Task close, 2: Task re-open, 3: Pending user registration
@@ -797,17 +591,17 @@ GROUP BY u.user_id';
      * @return bool
      * @version 1.0
      */
-    public static function adminRequestCheck($type, $task_id)
+    public static function AdminRequestCheck($type, $task_id)
     {
         global $db;
 
-        $check = $db->query("SELECT *
+        $check = $db->Query("SELECT *
                                FROM {admin_requests}
                               WHERE request_type = ? AND task_id = ? AND resolved_by = 0",
                             array($type, $task_id));
-        return (bool)($db->countRows($check));
-    }
-
+        return (bool)($db->CountRows($check));
+    } // }}}
+    // Get the current user's details {{{
     /**
      * Gets all user details of a user
      * @param integer $user_id
@@ -820,10 +614,10 @@ GROUP BY u.user_id';
         global $db;
 
         // Get current user details.  We need this to see if their account is enabled or disabled
-        $result = $db->query('SELECT * FROM {users} WHERE user_id = ?', array(intval($user_id)));
-        return $db->fetchRow($result);
-    }
-
+        $result = $db->Query('SELECT * FROM {users} WHERE user_id = ?', array(intval($user_id)));
+        return $db->FetchRow($result);
+    } // }}}
+    // Get group details {{{
     /**
      * Gets all information about a group
      * @param integer $group_id
@@ -834,10 +628,10 @@ GROUP BY u.user_id';
     public static function getGroupDetails($group_id)
     {
         global $db;
-        $sql = $db->query('SELECT * FROM {groups} WHERE group_id = ?', array($group_id));
-        return $db->fetchRow($sql);
-    }
-
+        $sql = $db->Query('SELECT * FROM {groups} WHERE group_id = ?', array($group_id));
+        return $db->FetchRow($sql);
+    } // }}}
+    //  {{{
   /**
    * Crypt a password with the method set in the configfile
    * @param string $password
@@ -847,130 +641,108 @@ GROUP BY u.user_id';
    */
   public static function cryptPassword($password)
   {
-		global $conf;
-
-		# during install e.g. not set
-		if(isset($conf['general']['passwdcrypt'])){
-			$pwcrypt = strtolower($conf['general']['passwdcrypt']);
-		}else{
-			$pwcrypt='';
-		}
+	global $conf;
+	$pwcrypt = strtolower($conf['general']['passwdcrypt']);
 
 	# sha1, md5, sha512 are unsalted, hashing methods, not suited for storing passwords anymore.
-	# Use password_hash(), that adds random salt, customizable rounds and customizable hashing algorithms.
+	# Use crypt(), that adds random salt, customizable rounds and customizable hashing algorithms.
 	if ($pwcrypt == 'sha1') {
 		return sha1($password);
 	} elseif ($pwcrypt == 'md5') {
 		return md5($password);
 	} elseif ($pwcrypt == 'sha512') {
 		return hash('sha512', $password);
-	} elseif ($pwcrypt =='argon2i' && version_compare(PHP_VERSION,'7.2.0')>=0){
-		# php7.2+
-		return password_hash($password, PASSWORD_ARGON2I);
 	} else {
-		$bcryptoptions=array('cost'=>14);
-		return password_hash($password, PASSWORD_BCRYPT, $bcryptoptions);
+		return crypt($password);
 	}
-  }
+  } // }}}
 
+    // {{{
+    /**
+     * Check if a user provided the right credentials
+     * @param string $username
+     * @param string $password
+     * @param string $method '', 'oauth', 'ldap', 'native'
+     * @access public static
+     * @return integer user_id on success, 0 if account or user is disabled, -1 if password is wrong
+     * @version 1.0
+     */
+    public static function checkLogin($username, $password, $method = 'native')
+    {
+        global $db;
 
-	public static function fetchAuthDetails($username, $method = 'native')
-	{
-		global $db;
-		
-		if($method === 'ldap') {
-			$user_id = -42; // just an invalid id
-		} else {
-			// handle multiple email addresses
-			$temp = $db->query("SELECT id FROM {user_emails} WHERE email_address = ?", $username);
-			$user_id = $db->fetchRow($temp);
-			$user_id = is_array($user_id) ? $user_id['id'] : -41; // just an invalid id
+	$email_address = $username;  //handle multiple email addresses
+        $temp = $db->Query("SELECT id FROM {user_emails} WHERE email_address = ?",$email_address);
+	$user_id = $db->FetchRow($temp);
+	$user_id = $user_id["id"];
+
+	$result = $db->Query("SELECT  uig.*, g.group_open, u.account_enabled, u.user_pass,
+                                        lock_until, login_attempts
+                                FROM  {users_in_groups} uig
+                           LEFT JOIN  {groups} g ON uig.group_id = g.group_id
+                           LEFT JOIN  {users} u ON uig.user_id = u.user_id
+                               WHERE  u.user_id = ? OR u.user_name = ? AND g.project_id = ?
+                            ORDER BY  g.group_id ASC", array($user_id, $username, 0));
+
+        $auth_details = $db->FetchRow($result);
+
+        if($auth_details === false) {
+            return -2;
+        }
+        if(!$result || !count($auth_details)) {
+            return 0;
+        }
+
+	if( $method != 'ldap' ){
+		// encrypt the password with the method used in the db
+		switch (strlen($auth_details['user_pass'])) {
+		# detecting passwords stored with old unsalted hashing methods: sha1,md5,sha512
+		case 40:
+			$pwhash = sha1($password);
+			break;
+		case 32:
+			$pwhash = md5($password);
+			break;
+		case 128:
+			$pwhash = hash('sha512', $password);
+			break;
+		default:
+			$pwhash = crypt($password, $auth_details['user_pass']); // user_pass contains algorithm, rounds, salt
+			break;
 		}
-		$result = $db->query("SELECT  uig.*, g.group_open, u.account_enabled, u.user_pass,
-		                              lock_until, login_attempts
-		                      FROM  {users_in_groups} uig
-		                      LEFT JOIN  {groups} g ON uig.group_id = g.group_id
-		                      LEFT JOIN  {users} u ON uig.user_id = u.user_id
-		                      WHERE  (u.user_id = ? OR u.user_name = ?) AND g.project_id = ?
-		                      ORDER BY  g.group_id ASC",
-		                     array($user_id, $username, 0));
-		$auth_details = $db->fetchRow($result);
-		if(!$result || (is_array($auth_details) && !count($auth_details))) {
-			return false;
-		}
-		if ($auth_details['lock_until'] > 0 && $auth_details['lock_until'] < time()) {
-			$db->query('UPDATE {users} SET lock_until = 0, account_enabled = 1, login_attempts = 0
-			            WHERE user_id = ?',
-			           array($auth_details['user_id']));
-			$auth_details['account_enabled'] = 1;
-			$_SESSION['was_locked'] = true;
-		}
-		return $auth_details;
 	}
 
-	/**
-	 * Check if a user provided the right credentials
-	 * @param string $username
-	 * @param string $password
-	 * @param string $method '', 'oauth', 'ldap', 'native'
-	 * @access public static
-	 * @return integer user_id on success, 0 if account or user is disabled, -1 if password is wrong
-	 * @version 1.0
-	 */
-	public static function checkLogin($username, $password, $method = 'native')
-	{
-		$pwok = null;
-		if($method == 'oauth') {
-			// skip password check if the user is using oauth
-			$pwok = true;
-		} elseif($method === 'ldap') {
-			$pwok = Flyspray::checkForLDAPUser($username, $password);
-			if(!$pwok) {
-				return -1;
-			}
-		}
+        if ($auth_details['lock_until'] > 0 && $auth_details['lock_until'] < time()) {
+            $db->Query('UPDATE {users} SET lock_until = 0, account_enabled = 1, login_attempts = 0
+                           WHERE user_id = ?', array($auth_details['user_id']));
+            $auth_details['account_enabled'] = 1;
+            $_SESSION['was_locked'] = true;
+        }
 
-		$auth_details = Flyspray::fetchAuthDetails($username, $method);
-		if($auth_details === false) {
-			return -2;
+	// skip password check if the user is using oauth
+	if($method == 'oauth'){
+		$pwOk = true;
+	} elseif( $method == 'ldap'){
+		$pwOk = Flyspray::checkForLDAPUser($username, $password);
+	} else{
+		// Compare the crypted password to the one in the database
+		if( function_exists('hash_equals') ){
+			$pwOk = hash_equals($pwhash, $auth_details['user_pass']);
+		} else{
+			$pwOk = ($pwhash == $auth_details['user_pass']);
 		}
-
-		if(is_null($pwok)) {
-			// encrypt the password with the method used in the db
-			if(substr($auth_details['user_pass'],0,1)!='$' && (
-			           strlen($auth_details['user_pass'])==32
-			        || strlen($auth_details['user_pass'])==40
-			        || strlen($auth_details['user_pass'])==128
-				)){
-				# detecting (old) password stored with old unsalted hashing methods: md5,sha1,sha512
-				switch(strlen($auth_details['user_pass'])){
-				case 32:
-					$pwhash = md5($password);
-					break;
-				case 40:
-					$pwhash = sha1($password);
-					break;
-				case 128:
-					$pwhash = hash('sha512', $password);
-					break;
-				}
-				$pwok = hash_equals($auth_details['user_pass'], $pwhash);
-			}else{
-				#$pwhash = crypt($password, $auth_details['user_pass']); // user_pass contains algorithm, rounds, salt
-				$pwok = password_verify($password, $auth_details['user_pass']);
-			}
-		}
-
-		// Admin users cannot be disabled
-		if ($auth_details['group_id'] == 1 /* admin */ && $pwok) {
-			return $auth_details['user_id'];
-		}
-		if ($pwok && $auth_details['account_enabled'] == '1' && $auth_details['group_open'] == '1'){
-			return $auth_details['user_id'];
-		}
-
-		return ($auth_details['account_enabled'] && $auth_details['group_open']) ? 0 : -1;
 	}
+
+        // Admin users cannot be disabled
+        if ($auth_details['group_id'] == 1 /* admin */ && $pwOk) {
+            return $auth_details['user_id'];
+        }
+        if ($pwOk && $auth_details['account_enabled'] == '1' && $auth_details['group_open'] == '1'){
+            return $auth_details['user_id'];
+        }
+
+        return ($auth_details['account_enabled'] && $auth_details['group_open']) ? 0 : -1;
+    } // }}}
 
     static public function checkForOauthUser($uid, $provider)
     {
@@ -980,7 +752,7 @@ GROUP BY u.user_id';
             return false;
         }
 
-        $sql = $db->query("SELECT id FROM {user_emails} WHERE oauth_uid = ? AND oauth_provider = ?",array($uid, $provider));
+        $sql = $db->Query("SELECT id FROM {user_emails} WHERE oauth_uid = ? AND oauth_provider = ?",array($uid, $provider));
 
         if ($db->fetchOne($sql)) {
             return true;
@@ -990,38 +762,33 @@ GROUP BY u.user_id';
     }
 
 	/**
-	 * Check if a LDAP user exists and binds
-	 * @param string $username
-	 * @param string $password
-	 * @access public static
-	 * @return bool
-	 */
+	* 20150320 just added from provided patch, untested!
+	*/
 	public static function checkForLDAPUser($username, $password)
 	{
-		global $conf, $db, $fs;
-
-		$ldap_uri =         isset($conf['ldap']['uri']) ? $conf['ldap']['uri'] : null; # ldap://example.com:389 
-		$ldap_version =     isset($conf['ldap']['version']) ? $conf['ldap']['version'] : 3; 
-		$base_dn =          $conf['ldap']['base_dn'];      # ou=users,dc=example,dc=com
-		$ldap_search_user = $conf['ldap']['search_user'];  # cn=admin,dc=example,dc=com
-		$ldap_search_pass = $conf['ldap']['search_pass'];  #
-		$filter =           $conf['ldap']['filter'];       # uid=%USERNAME%
-		$lf_name =          isset($conf['ldap']['field_name']) ? $conf['ldap']['field_name'] : 'cn';
-		$lf_email =         isset($conf['ldap']['field_email']) ? $conf['ldap']['field_email'] : 'mail';
+		# TODO: add to admin settings area, maybe let user set the config at final installation step
+		$ldap_host = 'ldaphost';
+		$ldap_port = '389';
+		$ldap_version = '3';
+		$base_dn = 'OU=SBSUsers,OU=Users,OU=MyBusiness,DC=MyDomain,DC=local';
+		$ldap_search_user = 'ldapuser@mydomain.local';
+		$ldap_search_pass = "ldapuserpass";
+		$filter = "SAMAccountName=%USERNAME%"; // this is for AD - may be different with other setups
+		$username = $username;
 
 		if (strlen($password) == 0){ // LDAP will succeed binding with no password on AD (defaults to anon bind)
 			return false;
 		}
 
-		$rs = ldap_connect($ldap_uri);
+		$rs = ldap_connect($ldap_host, $ldap_port);
 		@ldap_set_option($rs, LDAP_OPT_PROTOCOL_VERSION, $ldap_version);
 		@ldap_set_option($rs, LDAP_OPT_REFERRALS, 0);
 		$ldap_bind_dn = empty($ldap_search_user) ? NULL : $ldap_search_user;
 		$ldap_bind_pw = empty($ldap_search_pass) ? NULL : $ldap_search_pass;
 		if (!$bindok = @ldap_bind($rs, $ldap_bind_dn, $ldap_search_pass)){
-			# Uncomment for LDAP debugging
-			#$error_msg = ldap_error($rs);
-			#die("Couldn't bind using ".$ldap_bind_dn."@".$ldap_uri." Because:".$error_msg);
+			// Uncomment for LDAP debugging
+			$error_msg = ldap_error($rs);
+			die("Couldn't bind using ".$ldap_bind_dn."@".$ldap_host.":".$ldap_port." Because:".$error_msg);
 			return false;
 		} else{
 			$filter_r = str_replace("%USERNAME%", $username, $filter);
@@ -1035,38 +802,19 @@ GROUP BY u.user_id';
 			}
 			$first_user = $result_user[0];
 			$ldap_user_dn = $first_user["dn"];
-			# Bind with the dn of the user that matched our filter (only one user should match sAMAccountName or uid etc..)
+			// Bind with the dn of the user that matched our filter (only one user should match sAMAccountName or uid etc..)
 			if (!$bind_user = @ldap_bind($rs, $ldap_user_dn, $password)){
-				#$error_msg = ldap_error($rs);
-				#die("Couldn't bind using ".$ldap_user_dn."@".$ldap_uri." Because:".$error_msg);
+				$error_msg = ldap_error($rs);
+				die("Couldn't bind using ".$ldap_user_dn."@".$ldap_host.":".$ldap_port." Because:".$error_msg);
 				return false;
 			} else{
-				# Create user if it doesn't exist
-				$result = $db->query("SELECT user_id
-					              FROM {users}
-						      WHERE user_name = ?", array($username));
-				$user_id = $db->fetchRow($result);
-				if (!$result || !$user_id) {
-					$group_in = $fs->prefs['anon_group'];
-					$success  = Backend::create_user(
-						$username,                    // login
-						null,                         // password
-						$first_user[$lf_name][0],     // name
-						'',                           // jabber id
-						$first_user[$lf_email][0],    // email
-						1,                            // notify type
-						(intval(strftime("%z"))/100), // time zone
-						$group_in,                    // group in
-						1);                           // enabled
-					if(!$success) {
-						die('Unable to register new LDAP user');
-					}
-				}
 				return true;
 			}
 		}
 	}
 
+
+    // Set cookie {{{
     /**
      * Sets a cookie, automatically setting the URL
      * Now same params as PHP's builtin setcookie()
@@ -1107,8 +855,8 @@ GROUP BY u.user_id';
         }
 
         return setcookie($name, $val, $time, $url['path'],$domain,$secure,$httponly);
-    }
-
+    } // }}}
+            // Start the session {{{
     /**
      * Starts the session
      * @access public static
@@ -1116,38 +864,61 @@ GROUP BY u.user_id';
      * @version 1.0
      * @notes smile intented
      */
-	public static function startSession()
-	{
-		global $conf;
-		if (defined('IN_FEED') || php_sapi_name() === 'cli') {
-			return;
-		}
+    public static function startSession()
+    {
+    	global $conf;
+        if (defined('IN_FEED') || php_sapi_name() === 'cli') {
+            return;
+        }
+        /*
+        # commented out IMHO weired obfuscating session names
+        $names = array( 'GetFirefox',
+                        'UseLinux',
+                        'NoMicrosoft',
+                        'ThinkB4Replying',
+                        'FreeSoftware',
+                        'ReadTheFAQ',
+                        'RTFM',
+                        'VisitAU',
+                        'SubliminalAdvertising',
+                      );
 
-		$url = parse_url($GLOBALS['baseurl']);
-		session_name('flyspray');
-		session_set_cookie_params(0,$url['path'],'', (isset($conf['general']['securecookies'])? $conf['general']['securecookies']:false), TRUE);
-		session_start();
-		if(!isset($_SESSION['csrftoken'])){
-			$_SESSION['csrftoken']=rand(); # lets start with one anti csrf token secret for the session and see if it's simplicity is good enough (I hope together with enforced Content Security Policies)
-		}
-	
-		/**
-		 * For the access key help: differences of browser and operating system combinations.
-		 * As it is relative expensive and very slow below PHP 7.1.1:
-		 * only do that once per user session and
-		 * only on newer php versions and
-		 * only if a browscap file is installed.
-		 * lite_php_browscap.ini from browscap.org should be sufficient. 
-		 * (below 1ms on a linux with php7.3 in virtualbox on old laptop)
-		*/
-		if (!isset($_SESSION['ua']) && version_compare(PHP_VERSION, '7.1.1') >= 0 && ini_get('browscap')){
-			$ua = get_browser(null, true);
-			$_SESSION['ua'] = array();
-			$_SESSION['ua']['platform'] = $ua['platform'];
-			$_SESSION['ua']['browser'] = $ua['browser'];
-		}
-	}
+        foreach ($names as $val)
+        {
+            session_name($val);
+            session_start();
 
+            if (isset($_SESSION['SESSNAME']))
+            {
+                $sessname = $_SESSION['SESSNAME'];
+                break;
+            }
+
+            $_SESSION = array();
+            session_destroy();
+            setcookie(session_name(), '', time()-60, '/');
+        }
+
+        if (empty($sessname))
+        {
+            $rand_key = array_rand($names);
+            $sessname = $names[$rand_key];
+            session_name($sessname);
+            session_start();
+            $_SESSION['SESSNAME'] = $sessname;
+        }
+        */
+
+        $url = parse_url($GLOBALS['baseurl']);
+        session_name('flyspray');
+        session_set_cookie_params(0,$url['path'],'', (isset($conf['general']['securecookies'])? $conf['general']['securecookies']:false), TRUE);
+        session_start();
+        if(!isset($_SESSION['csrftoken'])){
+                $_SESSION['csrftoken']=rand(); # lets start with one anti csrf token secret for the session and see if it's simplicity is good enough (I hope together with enforced Content Security Policies)
+        }
+    }  // }}}
+
+    // Compare tasks {{{
     /**
      * Compares two tasks and returns an array of differences
      * @param array $old
@@ -1193,56 +964,29 @@ GROUP BY u.user_id';
         }
 
         return $changes;
-    }
+    } // }}}
 
-		/**
-		 * Get all tags of a task
-		 * @param int $task_id
-		 * 
-		 * @access public static
-		 * @return array
-		 * @version 1.0
-		 */
-		public static function getTags($task_id)
-		{
-			global $db;
-			$sql = $db->query('SELECT tg.tag_id, tg.tag_name AS tag, tg.class, tt.added, tt.added_by
-				FROM {task_tag} tt
-				JOIN {list_tag} tg ON tg.tag_id=tt.tag_id 
-				WHERE task_id = ?
-				ORDER BY list_position',
-				array($task_id)
-			);
-			return $db->fetchAllArray($sql);
-		}
+	// {{{
+        /**
+        * Get all tags of a task
+        * @access public static
+        * @return array
+        * @version 1.0
+        */
+        public static function getTags($task_id)
+        {
+                global $db;
+                # pre FS1.0beta
+                #$sql = $db->Query('SELECT * FROM {tags} WHERE task_id = ?', array($task_id));
+                # since FS1.0beta
+                $sql = $db->Query('SELECT tg.tag_id, tg.tag_name AS tag, tg.class FROM {task_tag} tt
+                        JOIN {list_tag} tg ON tg.tag_id=tt.tag_id 
+                        WHERE task_id = ?
+                        ORDER BY list_position', array($task_id));
+                return $db->FetchAllArray($sql);
+	} /// }}}
 
-	/**
-	* load all task tags into array
-	*
-	* Compared to listTags() of class project, this loads all tags in Flyspray database into a global array.
-	* Ideally called only once per http request, then using the array index for getting tag info.
-	*
-	* Used mainly for tasklist view to simplify get_task_list() sql query.
-	*
-	* @return array
-	*/
-	public static function getAllTags()
-	{
-		global $db;
-		$at=array();
-		$res = $db->query('SELECT tag_id, project_id, list_position, tag_name, class, show_in_list FROM {list_tag}');
-		while ($t = $db->fetchRow($res)){
-			$at[$t['tag_id']]=array(
-				'project_id'=>$t['project_id'],
-				'list_position'=>$t['list_position'],
-				'tag_name'=>$t['tag_name'],
-				'class'=>$t['class'],
-				'show_in_list'=>$t['show_in_list']
-			);
-		}
-		return $at;
-	}
-
+    // {{{
     /**
      * Get a list of assignees for a task
      * @param integer $task_id
@@ -1251,17 +995,17 @@ GROUP BY u.user_id';
      * @return array
      * @version 1.0
      */
-    public static function getAssignees($task_id, $name = false)
+    public static function GetAssignees($task_id, $name = false)
     {
         global $db;
 
-        $sql = $db->query('SELECT u.real_name, u.user_id
+        $sql = $db->Query('SELECT u.real_name, u.user_id
                              FROM {users} u, {assigned} a
                             WHERE task_id = ? AND u.user_id = a.user_id',
                               array($task_id));
 
         $assignees = array();
-        while ($row = $db->fetchRow($sql)) {
+        while ($row = $db->FetchRow($sql)) {
             if ($name) {
                 $assignees[0][] = $row['user_id'];
                 $assignees[1][] = $row['real_name'];
@@ -1271,8 +1015,9 @@ GROUP BY u.user_id';
         }
 
         return $assignees;
-    }
+    } /// }}}
 
+    // {{{
     /**
      * Explode string to the array of integers
      * @param string $separator
@@ -1291,7 +1036,7 @@ GROUP BY u.user_id';
             }
     	}
     	return $ret;
-    }
+    } /// }} }
 
     /**
      * Checks if a function is disabled
@@ -1353,7 +1098,7 @@ GROUP BY u.user_id';
                 $_SESSION['ERROR'] .= ' ' . $advanced_info;
             }
             if ($die) {
-                Flyspray::redirect( (is_null($url) ? $baseurl : $url) );
+                Flyspray::Redirect( (is_null($url) ? $baseurl : $url) );
             }
         }
     }
@@ -1365,13 +1110,13 @@ GROUP BY u.user_id';
      * @return integer 0 if the user does not exist
      * @version 1.0
      */
-    public static function validUserId($id)
+    public static function ValidUserId($id)
     {
         global $db;
 
-        $sql = $db->query('SELECT user_id FROM {users} WHERE user_id = ?', array(intval($id)));
+        $sql = $db->Query('SELECT user_id FROM {users} WHERE user_id = ?', array(intval($id)));
 
-        return intval($db->fetchOne($sql));
+        return intval($db->FetchOne($sql));
     }
 
     /**
@@ -1381,17 +1126,13 @@ GROUP BY u.user_id';
      * @return integer 0 if the user does not exist
      * @version 1.0
      */
-    public static function usernameToId($name)
+    public static function UserNameToId($name)
     {
         global $db;
 
-	if(!is_string($name)){
-		return 0;
-	}
+        $sql = $db->Query('SELECT user_id FROM {users} WHERE user_name = ?', array($name));
 
-        $sql = $db->query('SELECT user_id FROM {users} WHERE user_name = ?', array($name));
-
-        return intval($db->fetchOne($sql));
+        return intval($db->FetchOne($sql));
     }
 
     /**
@@ -1576,7 +1317,7 @@ GROUP BY u.user_id';
      * @access public
      * @return array
      */
-    public function getNotificationOptions($noneAllowed = true)
+    public function GetNotificationOptions($noneAllowed = true)
     {
         switch ($this->prefs['user_notify'])
         {

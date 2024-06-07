@@ -1,8 +1,8 @@
 // ** I18N
 
-// Calendar FR language
+// Calendar EN language
 // Author: Mihai Bazon, <mihai_bazon@yahoo.com>
-// Encoding: UTF-8
+// Encoding: any
 // Distributed under the same terms as the calendar itself.
 
 // For translators: please use UTF-8 if possible.  We strongly believe that

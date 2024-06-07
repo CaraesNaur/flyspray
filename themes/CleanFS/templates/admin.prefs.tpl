@@ -17,21 +17,28 @@ function ShowHidePassword(id) {
         var i;
         var parent = arguments[1];
 
-        if(document.getElementById(parent).checked) {
-            for (i = 2; i < arguments.length; i++) {
+        if(document.getElementById(parent).checked)
+        {
+            for (i = 2; i < arguments.length; i++)
+            {
                 if (inverted) {
                     document.getElementById(arguments[i]).checked = false;
                     document.getElementById(arguments[i]).disabled = true;
-                } else {
+                }
+                else {
                     document.getElementById(arguments[i]).checked = true;
                     document.getElementById(arguments[i]).disabled = false;
                 }
             }
-        } else {
-            for (i = 2; i < arguments.length; i++) {
+        }
+        else
+        {
+            for (i = 2; i < arguments.length; i++)
+            {
                 if (inverted) {
                     document.getElementById(arguments[i]).disabled = false;
-                } else {
+                }
+                else {
                     document.getElementById(arguments[i]).disabled = true;
                 }
             }
@@ -39,46 +46,45 @@ function ShowHidePassword(id) {
     }
 </script>
 <div id="toolbox">
-<h3><?= eL('admintoolboxlong') ?> :: <?= eL('preferences') ?></h3>
-<?php echo tpl_form(createURL('admin', 'prefs')); ?>
+  <h3><?php echo Filters::noXSS(L('admintoolboxlong')); ?> :: <?php echo Filters::noXSS(L('preferences')); ?></h3>
+  <?php echo tpl_form(CreateURL('admin', 'prefs')); ?>
   <ul id="submenu">
-   <li><a href="#general"><?= eL('general') ?></a></li>
-   <li><a href="#lookandfeel"><?= eL('lookandfeel') ?></a></li>
-   <li><a href="#userregistration"><?= eL('userregistration') ?></a></li>
-   <li><a href="#notifications"><?= eL('notifications') ?></a></li>
-   <li><a href="#antispam"><?= eL('antispam') ?></a></li>
+   <li><a href="#general"><?php echo Filters::noXSS(L('general')); ?></a></li>
+   <li><a href="#lookandfeel"><?php echo Filters::noXSS(L('lookandfeel')); ?></a></li>
+   <li><a href="#userregistration"><?php echo Filters::noXSS(L('userregistration')); ?></a></li>
+   <li><a href="#notifications"><?php echo Filters::noXSS(L('notifications')); ?></a></li>
   </ul>
 
-<div id="general" class="tab">
+   <div id="general" class="tab">
       <ul class="form_elements">
         <li>
-          <label for="pagetitle"><?= eL('pagetitle') ?></label>
+          <label for="pagetitle"><?php echo Filters::noXSS(L('pagetitle')); ?></label>
           <input id="pagetitle" name="page_title" type="text" class="text" maxlength="100" value="<?php echo Filters::noXSS($fs->prefs['page_title']); ?>" />
         </li>
 
         <li>
-          <label for="defaultproject"><?= eL('defaultproject') ?></label>
+          <label for="defaultproject"><?php echo Filters::noXSS(L('defaultproject')); ?></label>
           <select id="defaultproject" name="default_project">
             <?php echo tpl_options(array_merge(array(0 => L('allprojects')), Flyspray::listProjects()), $fs->prefs['default_project']); ?>
           </select>
         </li>
 
         <li>
-          <label for="langcode"><?= eL('language') ?></label>
+          <label for="langcode"><?php echo Filters::noXSS(L('language')); ?></label>
           <select id="langcode" name="lang_code">
             <?php echo tpl_options(Flyspray::listLangs(), $fs->prefs['lang_code'], true); ?>
           </select>
         </li>
 
         <li>
-          <label for="urlrewriting"><?= eL('urlrewriting') ?></label>
+          <label for="urlrewriting"><?php echo Filters::noXSS(L('urlrewriting')); ?></label>
           <select id="urlrewriting" name="url_rewriting">
             <?php echo tpl_options(array('1' => L('on'), '0' => L('off')), $fs->prefs['url_rewriting'], false); ?>
           </select>
         </li>
 
         <li>
-          <label for="emailNoHTML"><?= eL('emailNoHTML') ?></label>
+          <label for="emailNoHTML"><?php echo Filters::noXSS(L('emailNoHTML')); ?></label>
         	<?php echo tpl_checkbox('emailNoHTML', $fs->prefs['emailNoHTML'], 'emailNoHTML'); ?>
         </li>
 
@@ -90,9 +96,9 @@ function ShowHidePassword(id) {
             }
           ?>
 
-          <label for="prefslogo"><?= eL('showlogo') ?></label>
+          <label for="logo"><?php echo Filters::noXSS(L('showlogo')); ?></label>
           <?php if ($fs->prefs['logo']):?>
-		    <img src="<?php echo Filters::noXSS($baseurl.'/'.$fs->prefs['logo']); ?>" id="prefslogo">
+		    <img src="<?php echo Filters::noXSS($baseurl.'/'.$fs->prefs['logo']); ?>">
 	      <?php endif ?>
         </li>
 
@@ -100,78 +106,76 @@ function ShowHidePassword(id) {
           <label for="logo_input">&nbsp;</label>
           <input id="logo_input" name="logo" type="file" accept="image/*" value="<?php echo Filters::noXSS($fs->prefs['logo']); ?>" />
         </li>
-	<li>
-		<label for="massops"><?= eL('massopsenable') ?></label>
-		<?php echo tpl_checkbox('massops', $fs->prefs['massops'], 'massops'); ?>
-	</li>
+
         <li>
-          <label for="enable_avatars"><?= eL('enableavatars') ?></label>
+          <label for="enable_avatars"><?php echo Filters::noXSS(L('enableavatars')); ?></label>
           <?php echo tpl_checkbox('enable_avatars', $fs->prefs['enable_avatars'], 'enable_avatars', 1, array('onclick'=>'check_change(false, "enable_avatars", "gravatars", "max_avatar_size")')); ?>
         </li>
 
         <li>
-          <label for="gravatars"><?= eL('showgravatars') ?></label>
+          <label for="gravatars"><?php echo Filters::noXSS(L('showgravatars')); ?></label>
           <?php echo tpl_checkbox('gravatars', $fs->prefs['gravatars'], 'gravatars'); ?>
         </li>
 
         <li>
-          <label for="max_avatar_size"><?= eL('maxavatarsize') ?></label>
+          <label for="max_avatar_size"><?php echo Filters::noXSS(L('maxavatarsize')); ?></label>
           <input id="max_avatar_size" name="max_avatar_size" type="text" class="text" size="3" maxlength="3" value="<?php echo Filters::noXSS($fs->prefs['max_avatar_size']); ?>" />
         </li>
 
         <li>
-          <label for="hide_emails"><?= eL('hideemails') ?></label>
-	  <?php echo tpl_checkbox('hide_emails', $fs->prefs['hide_emails'], 'hide_emails'); ?>
+          <label for="hide_emails"><?php echo Filters::noXSS(L('hideemails')); ?></label>
+        	<?php echo tpl_checkbox('hide_emails', $fs->prefs['hide_emails'], 'hide_emails'); ?>
         </li>
 
         <li>
-          <label for="dateformat"><?= eL('dateformat') ?></label>
+          <label for="dateformat"><?php echo Filters::noXSS(L('dateformat')); ?></label>
           <select id="dateformat" name="dateformat">
             <?php echo tpl_date_formats($fs->prefs['dateformat']); ?>
           </select>
         </li>
 
         <li>
-          <label for="dateformat_extended"><?= eL('dateformat_extended') ?></label>
+          <label for="dateformat_extended"><?php echo Filters::noXSS(L('dateformat_extended')); ?></label>
           <select id="dateformat_extended" name="dateformat_extended">
             <?php echo tpl_date_formats($fs->prefs['dateformat_extended'], true); ?>
           </select>
         </li>
 
         <li>
-          <label for="cache_feeds"><?= eL('cache_feeds') ?></label>
+          <label for="cache_feeds"><?php echo Filters::noXSS(L('cache_feeds')); ?></label>
           <select id="cache_feeds" name="cache_feeds">
           <?php echo tpl_options(array('0' => L('no_cache'), '1' => L('cache_disk'), '2' => L('cache_db')), $fs->prefs['cache_feeds']); ?>
           </select>
         </li>
 
         <li>
-          <label for="disable_lostpw"><?= eL('disable_lostpw') ?></label>
+          <label for="disable_lostpw"><?php echo Filters::noXSS(L('disable_lostpw')); ?></label>
           <?php echo tpl_checkbox('disable_lostpw', $fs->prefs['disable_lostpw'], 'disable_lostpw'); ?>
+
         </li>
 
         <li>
-          <label for="disablechangepw"><?= eL('disable_changepw') ?></label>
+          <label for="disablechangepw"><?php echo Filters::noXSS(L('disable_changepw')); ?></label>
           <?php echo tpl_checkbox('disable_changepw', $fs->prefs['disable_changepw'], 'disablechangepw'); ?>
         </li>
 
         <li>
-          <label for="days_before_alert"><?= eL('daysbeforealert') ?></label>
+          <label for="days_before_alert"><?php echo Filters::noXSS(L('daysbeforealert')); ?></label>
           <input id="days_before_alert" name="days_before_alert" type="text" class="text" size="3" maxlength="3" value="<?php echo Filters::noXSS($fs->prefs['days_before_alert']); ?>" />
         </li>
 
         <li>
-          <label for="max_vote_per_day"><?= eL('maxvoteperday') ?></label>
+          <label for="max_vote_per_day"><?php echo Filters::noXSS(L('maxvoteperday')); ?></label>
           <input id="max_vote_per_day" name="max_vote_per_day" type="text" class="text" size="3" maxlength="3" value="<?php echo Filters::noXSS($fs->prefs['max_vote_per_day']); ?>" />
         </li>
         
         <li>
-          <label for="votes_per_project"><?= eL('votesperproject') ?></label>
+          <label for="votes_per_project"><?php echo Filters::noXSS(L('votesperproject')); ?></label>
           <input id="votes_per_project" name="votes_per_project" type="text" class="text" size="3" maxlength="3" value="<?php echo Filters::noXSS($fs->prefs['votes_per_project']); ?>" />
         </li>
         
         <li>
-          <label class="labeltextarea"><?= eL('pageswelcomemsg') ?></label>
+          <label class="labeltextarea"><?php echo Filters::noXSS(L('pageswelcomemsg')); ?></label>
           <?php
             $pages = array(
                 'index' => L('tasklist'),
@@ -183,7 +187,7 @@ function ShowHidePassword(id) {
         </li>
 
         <li>
-          <label class="labeltextarea" for="intromesg"><?= eL('mainmessage') ?></label>
+          <label class="labeltextarea" for="intromesg"><?php echo Filters::noXSS(L('mainmessage')); ?></label>
           <?php if (defined('FLYSPRAY_HAS_PREVIEW')): ?>
             <div class="hide preview" id="preview"></div>
             <button tabindex="9" type="button" onclick="showPreview('intromesg', '<?php echo Filters::noJsXSS($baseurl); ?>', 'preview')"><?php echo Filters::noXSS(L('preview')); ?></button>
@@ -191,107 +195,58 @@ function ShowHidePassword(id) {
           <?php echo TextFormatter::textarea('intro_message', 8, 70, array('accesskey' => 'r', 'tabindex' => 8, 'id' => 'intromesg'), Post::val('intro_message', $fs->prefs['intro_message'])); ?>
         </li>
       </ul>
-</div>
+    </div>
 
-<div id="userregistration" class="tab">
+    <div id="userregistration" class="tab">
       <ul class="form_elements">
         <li>
-          <label for="allowusersignups"><?= L('anonreg') ?></label>
+          <label for="allowusersignups"><?php echo Filters::noXSS(L('anonreg')); ?></label>
           <?php echo tpl_checkbox('anon_reg', $fs->prefs['anon_reg'], 'allowusersignups'); ?>
         </li>
 
         <li>
-          <label for="onlyoauthreg"><?= eL('onlyoauthreg') ?></label>
+          <label for="onlyoauthreg"><?php echo Filters::noXSS(L('onlyoauthreg')); ?></label>
           <?php echo tpl_checkbox('only_oauth_reg', $fs->prefs['only_oauth_reg'], 'onlyoauthreg', 1, array('onclick'=>'check_change(true, "onlyoauthreg", "needapproval", "spamproof")')); ?>
         </li>
 
         <li>
-          <label for="needapproval"><?= eL('regapprovedbyadmin') ?></label>
+          <label for="needapproval"><?php echo Filters::noXSS(L('regapprovedbyadmin')); ?></label>
           <?php echo tpl_checkbox('need_approval', $fs->prefs['need_approval'], 'needapproval', 1, ($fs->prefs['only_oauth_reg']) ? array('disabled' => 'disabled', 'onclick' => 'check_change(true, "needapproval", "spamproof")') : array('onclick' => 'check_change("needapproval", "spamproof")')); ?>
         </li>
 	
-        <li><?php /* TODO rename misleading 'spamproof' pref to something like email_verify */ ?>
-          <label for="spamproof"><?= eL('spamproof') ?></label>
+        <li>
+          <label for="spamproof"><?php echo Filters::noXSS(L('spamproof')); ?></label>
           <?php echo tpl_checkbox('spam_proof', $fs->prefs['spam_proof'], 'spamproof', 1, ($fs->prefs['need_approval'] || $fs->prefs['only_oauth_reg'] ) ? array('disabled' => 'true') : ''); ?>
         </li>
 	
 	<li>
-          <label for="repeat_password"><?= eL('repeatpassword') ?></label>
-          <?php echo tpl_checkbox('repeat_password', $fs->prefs['repeat_password'], 'repeat_password'); ?>
-        </li>
-	
+		<label for="captcha_securimage"><?php echo Filters::noXSS(L('regcaptcha')); ?></label>
+		<?php echo tpl_checkbox('captcha_securimage', $fs->prefs['captcha_securimage'], 'captcha_securimage'); ?>
+	</li>
+        
 	<li>
-          <label for="repeat_emailaddress"><?= eL('repeatemailaddress') ?></label>
-          <?php echo tpl_checkbox('repeat_emailaddress', $fs->prefs['repeat_emailaddress'], 'repeat_emailaddress'); ?>
-        </li>
-	
-	<li>
-          <label for="notify_registration"><?= eL('notify_registration') ?></label>
+          <label for="notify_registration"><?php echo Filters::noXSS(L('notify_registration')); ?></label>
           <?php echo tpl_checkbox('notify_registration', $fs->prefs['notify_registration'], 'notify_registration'); ?>
         </li>
 
         <li>
-          <label for="defaultglobalgroup"><?= eL('defaultglobalgroup') ?></label>
+          <label for="defaultglobalgroup"><?php echo Filters::noXSS(L('defaultglobalgroup')); ?></label>
           <select id="defaultglobalgroup" name="anon_group">
             <?php echo tpl_options(Flyspray::listGroups(), $fs->prefs['anon_group']); ?>
           </select>
         </li>
 
-	<li>
-		<label><?= eL('activeoauths') ?></label>
-		<?php
-		$oauths = array(
-			'github',
-			'google',
-			'facebook',
-			'microsoft'
-			/*, 'instagram', 'eventbrite', 'linkedin', 'vkontakte'*/
-		); //TODO try the commented out for FS 1.1
-		
-		$selectedOauths = explode(' ', $fs->prefs['active_oauths']);
-		echo tpl_double_select('active_oauths', $oauths, $selectedOauths, true, false);
-		?>
+        <li>
+          <label><?php echo Filters::noXSS(L('activeoauths')); ?></label>
+          <?php
+            $oauths = array('github', 'google', 'facebook', 'microsoft'/*, 'instagram', 'eventbrite', 'linkedin', 'vkontakte'*/); //TODO try the commented out for FS 1.1
+            $selectedOauths = explode(' ', $fs->prefs['active_oauths']);
+            echo tpl_double_select('active_oauths', $oauths, $selectedOauths, true, false);
+          ?>
         </li>
+
       </ul>
-</div>
-    
-<div id="antispam" class="tab">
-	<h2><?= eL('antispam') ?></h2>
-	<p><?= eL('antispamprefsinfo') ?></p>
-
-	<ul class="form_elements">
-	<li>
-		<?php echo tpl_checkbox('relnofollow', isset($fs->prefs['relnofollow']) ? $fs->prefs['relnofollow'] : false, 'relnofollow'); ?>
-		<label for="relnofollow"><?= eL('relnofollow') ?></label>
-	</li>
-	</ul>
-	
-	<h3>Securimage</h3>
-	<p><?= eL('securimageprefsinfo') ?></p>
-	<ul class="form_elements">
-	<li>
-		<label for="captcha_securimage"><?= eL('securimageenable') ?></label>
-		<?php echo tpl_checkbox('captcha_securimage', isset($fs->prefs['captcha_securimage']) ? $fs->prefs['captcha_securimage']:false, 'captcha_securimage'); ?>
-	</li>
-	</ul>
-
-	<h3>Google reCaptcha</h3>
-	<p><?= eL('recaptchaprefsinfo') ?></p>
-	<ul class="form_elements">
-	<li>
-		<label for="captcha_recaptcha"><?= eL('recaptchaenable') ?></label>
-		<?php echo tpl_checkbox('captcha_recaptcha', isset($fs->prefs['captcha_recaptcha']) ? $fs->prefs['captcha_recaptcha']:false, 'captcha_recaptcha'); ?>
-	</li>
-	<li class="recaptchaconf">
-		<label for="captcha_recaptcha_sitekey">sitekey</label>
-		<input id="captcha_recaptcha_sitekey" class="text" type="text" name="captcha_recaptcha_sitekey" value="<?php echo Filters::noXSS(isset($fs->prefs['captcha_recaptcha_sitekey']) ? $fs->prefs['captcha_recaptcha_sitekey']:''); ?>" />
-	</li>
-	<li class="recaptchaconf">
-		<label for="captcha_recaptcha_secret">secret</label>
-		<input id="captcha_recaptcha_secret" class="text" type="text" name="captcha_recaptcha_secret" value="<?php echo Filters::noXSS(isset($fs->prefs['captcha_recaptcha_secret']) ? $fs->prefs['captcha_recaptcha_secret']:''); ?>" />
-	</li>
-	</ul>
-</div>
+    </div>
 
     <div id="notifications" class="tab">
       <ul class="form_elements">
@@ -399,8 +354,8 @@ function testEmail(){
       </fieldset>
     </div>
 
-<div id="lookandfeel" class="tab">
-	<ul class="form_elements">
+    <div id="lookandfeel" class="tab">
+      <ul class="form_elements">
 			<li>
 			<label for="globaltheme"><?php echo Filters::noXSS(L('globaltheme')); ?></label>
 			<select id="globaltheme" name="global_theme">
@@ -417,13 +372,7 @@ function testEmail(){
 			echo tpl_options($customs, $proj->prefs['custom_style']);
 			?>
 			</select>
-	</li>
-	<li>
-	<label for="default_entry"><?php echo Filters::noXSS(L('defaultentry')); ?></label>
-	<select id="default_entry" name="default_entry">
-	<?php echo tpl_options(array('index' => L('tasklist'),'toplevel' => L('toplevel')), Post::val('default_entry', $proj->prefs['default_entry'])); ?>
-	</select>
-	</li>
+      </li>
 
         <?php // Set the selectable column names
             // Do NOT use real database column name here and in the next list,
@@ -474,10 +423,10 @@ function testEmail(){
 				<li>
           <label for="default_order_by2"><?php echo Filters::noXSS(L('defaultorderby2')); ?></label>
           <select id="default_order_by2" name="default_order_by2">
-            <?php echo tpl_options($columnnames, isset($proj->prefs['sorting'][1]['field']) ? $proj->prefs['sorting'][1]['field'] : null, false); ?>
+            <?php echo tpl_options($columnnames, $proj->prefs['sorting'][1]['field'], false); ?>
           </select>
           <select id="default_order_by_dir2" name="default_order_by_dir2">
-            <?php echo tpl_options(array('asc' => L('ascending'), 'desc' => L('descending')), isset($proj->prefs['sorting'][1]['dir']) ? $proj->prefs['sorting'][1]['dir'] : null, false); ?>
+            <?php echo tpl_options(array('asc' => L('ascending'), 'desc' => L('descending')), $proj->prefs['sorting'][1]['dir'], false); ?>
           </select>
         </li>
 
@@ -530,5 +479,5 @@ function testEmail(){
       <button type="submit" class="positive"><?php echo Filters::noXSS(L('saveoptions')); ?></button>
       <button type="reset"><?php echo Filters::noXSS(L('resetoptions')); ?></button>
     </div>
-</form>
+  </form>
 </div>

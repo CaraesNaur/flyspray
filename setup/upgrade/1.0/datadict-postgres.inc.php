@@ -1,33 +1,29 @@
 <?php
 
 /**
-  @version v5.21.0-flyspray  09-Mar-2021
-  @copyright (c) 2000-2013 John Lim (jlim#natsoft.com). All rights reserved.
-  @copyright (c) 2014      Damien Regad, Mark Newnham and the ADOdb community
+  V5.20dev  ??-???-2014  (c) 2000-2014 John Lim (jlim#natsoft.com). All rights reserved.
   Released under both BSD license and Lesser GPL library license.
   Whenever there is any discrepancy between the two licenses,
   the BSD license will take precedence.
 
   Set tabs to 4 for best viewing.
+
 */
 
 // security - hide paths
 if (!defined('ADODB_DIR')) die();
 
-class ADODB2_postgres extends ADODB_DataDict
-{
-	public $databaseType = 'postgres';
-	public $seqField = false;
-	public $seqPrefix = 'SEQ_';
-	public $addCol = ' ADD COLUMN';
-	public $quote = '"';
-	public $renameTable = 'ALTER TABLE %s RENAME TO %s'; // at least since 7.1
-	public $dropTable = 'DROP TABLE %s CASCADE';
+class ADODB2_postgres extends ADODB_DataDict {
 
-	public $blobAllowsDefaultValue = true;
-	public $blobAllowsNotNull = true;
+	var $databaseType = 'postgres';
+	var $seqField = false;
+	var $seqPrefix = 'SEQ_';
+	var $addCol = ' ADD COLUMN';
+	var $quote = '"';
+	var $renameTable = 'ALTER TABLE %s RENAME TO %s'; // at least since 7.1
+	var $dropTable = 'DROP TABLE %s CASCADE';
 
-	function metaType($t, $len=-1, $fieldobj=false)
+	function MetaType($t,$len=-1,$fieldobj=false)
 	{
 		if (is_object($t)) {
 			$fieldobj = $t;
@@ -35,7 +31,7 @@ class ADODB2_postgres extends ADODB_DataDict
 			$len = $fieldobj->max_length;
 		}
 		$is_serial = is_object($fieldobj) && !empty($fieldobj->primary_key) && !empty($fieldobj->unique) &&
-			!empty($fieldobj->has_default) && substr($fieldobj->default_value, 0, 8) == 'nextval(';
+			!empty($fieldobj->has_default) && substr($fieldobj->default_value,0,8) == 'nextval(';
 
 		switch (strtoupper($t)) {
 			case 'INTERVAL':
@@ -44,9 +40,8 @@ class ADODB2_postgres extends ADODB_DataDict
 			case 'VARCHAR':
 			case 'NAME':
 	   		case 'BPCHAR':
-				if ($len <= $this->blobSize) {
-					return 'C';
-				}
+				if ($len <= $this->blobSize) return 'C';
+
 			case 'TEXT':
 				return 'X';
 
@@ -92,9 +87,9 @@ class ADODB2_postgres extends ADODB_DataDict
 		}
 	}
 
- 	function actualType($meta)
+ 	function ActualType($meta)
 	{
-		switch ($meta) {
+		switch($meta) {
 		case 'C': return 'VARCHAR';
 		case 'XL':
 		case 'X': return 'TEXT';
@@ -131,36 +126,36 @@ class ADODB2_postgres extends ADODB_DataDict
 	 * @param string $flds column-names and types for the changed columns
 	 * @return array with SQL strings
 	 */
-	function addColumnSQL($tabname, $flds)
+	function AddColumnSQL($tabname, $flds)
 	{
-		$tabname = $this->tableName($tabname);
+		$tabname = $this->TableName ($tabname);
 		$sql = array();
 		$not_null = false;
-		list($lines,$pkey) = $this->_genFields($flds);
+		list($lines,$pkey) = $this->_GenFields($flds);
 		$alter = 'ALTER TABLE ' . $tabname . $this->addCol . ' ';
 		foreach($lines as $v) {
-			if (($not_null = preg_match('/NOT NULL/i', $v))) {
-				$v = preg_replace('/NOT NULL/i', '', $v);
+			if (($not_null = preg_match('/NOT NULL/i',$v))) {
+				$v = preg_replace('/NOT NULL/i','',$v);
 			}
 			
-			if (preg_match('/^([^ ]+) .*DEFAULT (\'[^\']+\'|\"[^\"]+\"|[^ ]+)/', $v, $matches)) {
-				list(, $colname, $default) = $matches;
-				$sql[] = $alter . str_replace('DEFAULT '.$default, '', $v);
+			if (preg_match('/^([^ ]+) .*DEFAULT (\'[^\']+\'|\"[^\"]+\"|[^ ]+)/',$v,$matches)) {
+				list(,$colname,$default) = $matches;
+				$sql[] = $alter . str_replace('DEFAULT '.$default,'',$v);
 				$sql[] = 'UPDATE '.$tabname.' SET '.$colname.'='.$default;
 				$sql[] = 'ALTER TABLE '.$tabname.' ALTER COLUMN '.$colname.' SET DEFAULT ' . $default;
-			}
-			// SERIAL is not a true type in PostgreSQL and is only allowed when creating a new table.
-			// See https://www.postgresql.org/docs/13/datatype-numeric.html#DATATYPE-SERIAL 8.1.4. Serial Types
-			elseif (preg_match('/^([^ ]+) .*SERIAL/i', $v, $matches)) {
-				list(, $colname, $default) = $matches;
-				$sql[] = 'CREATE SEQUENCE '.$tabname.'_'.$colname.'_seq';
-				$sql[] = $alter.$colname.' INTEGER';
-				$sql[] = 'ALTER SEQUENCE '.$tabname.'_'.$colname.'_seq OWNED BY '.$tabname.'.'.$colname;
-				$sql[] = 'UPDATE '.$tabname.' SET '.$colname.' = nextval(\''.$tabname.'_'.$colname.'_seq\')';
-				$sql[] = 'ALTER TABLE '.$tabname.' ALTER COLUMN '.$colname.' SET DEFAULT nextval(\''.$tabname.'_'.$colname.'_seq\')';
-				$sql[] = 'ALTER TABLE '.$tabname.' ALTER COLUMN '.$colname.' SET NOT NULL';
-				$not_null = false;
-			} else {
+                        }
+                        // SERIAL is not a true type in PostgreSQL and is only allowed when creating a new table.
+                        // See http://www.postgresql.org/docs/9.4/static/datatype-numeric.html, 8.1.4. Serial Types.
+                        elseif (preg_match('/^([^ ]+) .*SERIAL/i',$v,$matches)) {
+                            list(,$colname,$default) = $matches;
+                            $sql[] = 'CREATE SEQUENCE '.$tabname.'_'.$colname.'_seq';
+                            $sql[] = $alter.$colname.' INTEGER';
+                            $sql[] = 'ALTER SEQUENCE '.$tabname.'_'.$colname.'_seq OWNED BY '.$tabname.'.'.$colname;
+                            $sql[] = 'UPDATE '.$tabname.' SET '.$colname.' = nextval(\''.$tabname.'_'.$colname.'_seq\')';
+                            $sql[] = 'ALTER TABLE '.$tabname.' ALTER COLUMN '.$colname.' SET DEFAULT nextval(\''.$tabname.'_'.$colname.'_seq\')';
+                            $sql[] = 'ALTER TABLE '.$tabname.' ALTER COLUMN '.$colname.' SET NOT NULL';
+                            $not_null = false;
+                        } else {
 				$sql[] = $alter . $v;
 			}
 			if ($not_null) {
@@ -171,9 +166,10 @@ class ADODB2_postgres extends ADODB_DataDict
 		return $sql;
 	}
 
-	function dropIndexSQL($idxname, $tabname = NULL)
+
+	function DropIndexSQL ($idxname, $tabname = NULL)
 	{
-	   return array(sprintf($this->dropIndex, $this->tableName($idxname), $this->tableName($tabname)));
+	   return array(sprintf($this->dropIndex, $this->TableName($idxname), $this->TableName($tabname)));
 	}
 
 	/**
@@ -181,64 +177,77 @@ class ADODB2_postgres extends ADODB_DataDict
 	 *
 	 * Postgres can't do that on it's own, you need to supply the complete defintion of the new table,
 	 * to allow, recreating the table and copying the content over to the new table
-	 * @param string $tabname table name
-	 * @param string $flds column name and type for the changed column
+	 * @param string $tabname table-name
+	 * @param string $flds column-name and type for the changed column
 	 * @param string $tableflds complete defintion of the new table, eg. for postgres, default ''
-	 * @param array/ $tableoptions options for the new table see createTableSQL, default ''
+	 * @param array/ $tableoptions options for the new table see CreateTableSQL, default ''
 	 * @return array with SQL strings
 	 */
-	function alterColumnSQL($tabname, $flds, $tableflds='', $tableoptions='')
+	 /*
+	function AlterColumnSQL($tabname, $flds, $tableflds='',$tableoptions='')
+	{
+		if (!$tableflds) {
+			if ($this->debug) ADOConnection::outp("AlterColumnSQL needs a complete table-definiton for PostgreSQL");
+			return array();
+		}
+		return $this->_recreate_copy_table($tabname,False,$tableflds,$tableoptions);
+	}*/
+
+	function AlterColumnSQL($tabname, $flds, $tableflds='',$tableoptions='')
 	{
 		// Check if alter single column datatype available - works with 8.0+
 		$has_alter_column = 8.0 <= (float) @$this->serverInfo['version'];
 
 		if ($has_alter_column) {
-			$tabname = $this->tableName($tabname);
+			$tabname = $this->TableName($tabname);
 			$sql = array();
-			list($lines, $pkey) = $this->_genFields($flds);
+			list($lines,$pkey) = $this->_GenFields($flds);
 			$set_null = false;
-			foreach ($lines as $v) {
-				$alter = 'ALTER TABLE ' . $tabname . $this->alterCol . ' ';
-				if ($not_null = preg_match('/NOT NULL/i', $v)) {
-					$v = preg_replace('/NOT NULL/i', '', $v);
+			foreach($lines as $v) {
+                                $alter = 'ALTER TABLE ' . $tabname . $this->alterCol . ' ';
+                                
+				if ($not_null = preg_match('/NOT NULL/i',$v)) {
+					$v = preg_replace('/NOT NULL/i','',$v);
 				}
 
 				// SERIAL is not a true type in PostgreSQL and is only allowed when creating a new table.
-				// See http://www.postgresql.org/docs/9.4/static/datatype-numeric.html, 8.1.4. Serial Types.
-				if (preg_match('/SERIAL/i', $v)) {
-					continue;
-				}                                
+                                // See http://www.postgresql.org/docs/9.4/static/datatype-numeric.html, 8.1.4. Serial Types.
+                                if (preg_match('/SERIAL/i',$v)) {
+                                  continue;
+                                }
+                                
 				 // this next block doesn't work - there is no way that I can see to
 				 // explicitly ask a column to be null using $flds
-				else if ($set_null = preg_match('/NULL/i', $v)) {
+				else if ($set_null = preg_match('/NULL/i',$v)) {
 					// if they didn't specify not null, see if they explicitely asked for null
 					// Lookbehind pattern covers the case 'fieldname NULL datatype DEFAULT NULL'
 					// only the first NULL should be removed, not the one specifying
 					// the default value
-					$v = preg_replace('/(?<!DEFAULT)\sNULL/i', '', $v);
+					$v = preg_replace('/(?<!DEFAULT)\sNULL/i','',$v);
 				}
 
-				if (preg_match('/^([^ ]+) .*DEFAULT (\'[^\']+\'|\"[^\"]+\"|[^ ]+)/', $v, $matches)) {
-					$existing = $this->metaColumns($tabname);
-					list(, $colname, $default) = $matches;
+				if (preg_match('/^([^ ]+) .*DEFAULT (\'[^\']+\'|\"[^\"]+\"|[^ ]+)/',$v,$matches)) {
+					$existing = $this->MetaColumns($tabname);
+					list(,$colname,$default) = $matches;
 					$alter .= $colname;
 					if ($this->connection) {
-						$old_coltype = $this->connection->metaType($existing[strtoupper($colname)]);
-					} else {
+						$old_coltype = $this->connection->MetaType($existing[strtoupper($colname)]);
+					}
+					else {
 						$old_coltype = $t;
 					}
 					$v = preg_replace('/^' . preg_quote($colname) . '\s/', '', $v);
 					$t = trim(str_replace('DEFAULT '.$default,'',$v));
 
 					// Type change from bool to int
-					if ($old_coltype == 'L' && $t == 'INTEGER') {
+					if ( $old_coltype == 'L' && $t == 'INTEGER' ) {
 						$sql[] = $alter . ' DROP DEFAULT';
 						$sql[] = $alter . " TYPE $t USING ($colname::BOOL)::INT";
 						$sql[] = $alter . " SET DEFAULT $default";
 					}
 					// Type change from int to bool
-					else if ($old_coltype == 'I' && $t == 'BOOLEAN') {
-						if (strcasecmp('NULL', trim($default)) != 0) {
+					else if ( $old_coltype == 'I' && $t == 'BOOLEAN' ) {
+						if( strcasecmp('NULL', trim($default)) != 0 ) {
 							$default = $this->connection->qstr($default);
 						}
 						$sql[] = $alter . ' DROP DEFAULT';
@@ -251,15 +260,16 @@ class ADODB2_postgres extends ADODB_DataDict
 						$sql[] = $alter . " SET DEFAULT $default";
 					}
 
-				} else {
+				}
+				else {
 					// drop default?
-					preg_match('/^\s*(\S+)\s+(.*)$/', $v, $matches);
-					list(, $colname, $rest) = $matches;
+					preg_match ('/^\s*(\S+)\s+(.*)$/',$v,$matches);
+					list (,$colname,$rest) = $matches;
 					$alter .= $colname;
 					$sql[] = $alter . ' TYPE ' . $rest;
 				}
 
-				#list($colname) = explode(' ', $v);
+#				list($colname) = explode(' ',$v);
 				if ($not_null) {
 					// this does not error out if the column is already not null
 					$sql[] = $alter . ' SET NOT NULL';
@@ -274,127 +284,106 @@ class ADODB2_postgres extends ADODB_DataDict
 
 		// does not have alter column
 		if (!$tableflds) {
-			if ($this->debug) {
-				ADOConnection::outp("alterColumnSQL needs a complete table-definiton for PostgreSQL");
-			}
+			if ($this->debug) ADOConnection::outp("AlterColumnSQL needs a complete table-definiton for PostgreSQL");
 			return array();
 		}
-		return $this->_recreate_copy_table($tabname, false, $tableflds, $tableoptions);
+		return $this->_recreate_copy_table($tabname,False,$tableflds,$tableoptions);
 	}
 
 	/**
 	 * Drop one column
 	 *
-	 * Postgres < 7.3 can't do that on it's own, you need to supply the complete definition of the new table,
+	 * Postgres < 7.3 can't do that on it's own, you need to supply the complete defintion of the new table,
 	 * to allow, recreating the table and copying the content over to the new table
-	 * @param string $tabname table name
-	 * @param string $flds column name and type for the changed column
+	 * @param string $tabname table-name
+	 * @param string $flds column-name and type for the changed column
 	 * @param string $tableflds complete defintion of the new table, eg. for postgres, default ''
-	 * @param array/ $tableoptions options for the new table see createTableSQL, default ''
+	 * @param array/ $tableoptions options for the new table see CreateTableSQL, default ''
 	 * @return array with SQL strings
 	 */
-	function dropColumnSQL($tabname, $flds, $tableflds='', $tableoptions='')
+	function DropColumnSQL($tabname, $flds, $tableflds='',$tableoptions='')
 	{
 		$has_drop_column = 7.3 <= (float) @$this->serverInfo['version'];
 		if (!$has_drop_column && !$tableflds) {
-			if ($this->debug) {
-				ADOConnection::outp("dropColumnSQL needs complete table-definiton for PostgreSQL < 7.3");
-			}
-			return array();
-		}
+			if ($this->debug) ADOConnection::outp("DropColumnSQL needs complete table-definiton for PostgreSQL < 7.3");
+		return array();
+	}
 		if ($has_drop_column) {
-			return ADODB_DataDict::dropColumnSQL($tabname, $flds);
+			return ADODB_DataDict::DropColumnSQL($tabname, $flds);
 		}
-		return $this->_recreate_copy_table($tabname, $flds, $tableflds, $tableoptions);
+		return $this->_recreate_copy_table($tabname,$flds,$tableflds,$tableoptions);
 	}
 
 	/**
 	 * Save the content into a temp. table, drop and recreate the original table and copy the content back in
 	 *
-	 * We also take care to set the values of the sequence and recreate the indexes.
+	 * We also take care to set the values of the sequenz and recreate the indexes.
 	 * All this is done in a transaction, to not loose the content of the table, if something went wrong!
 	 * @internal
-	 * @param string $tabname table name
-	 * @param string $dropflds column names to drop
-	 * @param string $tableflds complete definition of the new table, eg. for postgres
-	 * @param array|string $tableoptions options for the new table see createTableSQL, default ''
+	 * @param string $tabname table-name
+	 * @param string $dropflds column-names to drop
+	 * @param string $tableflds complete defintion of the new table, eg. for postgres
+	 * @param array/string $tableoptions options for the new table see CreateTableSQL, default ''
 	 * @return array with SQL strings
 	 */
-	function _recreate_copy_table($tabname, $dropflds, $tableflds, $tableoptions='')
+	function _recreate_copy_table($tabname,$dropflds,$tableflds,$tableoptions='')
 	{
-		if ($dropflds && !is_array($dropflds)) {
-			$dropflds = explode(',', $dropflds);
-		}
+		if ($dropflds && !is_array($dropflds)) $dropflds = explode(',',$dropflds);
 		$copyflds = array();
-		foreach ($this->metaColumns($tabname) as $fld) {
-			if (!$dropflds || !in_array($fld->name, $dropflds)) {
+		foreach($this->MetaColumns($tabname) as $fld) {
+			if (!$dropflds || !in_array($fld->name,$dropflds)) {
 				// we need to explicit convert varchar to a number to be able to do an AlterColumn of a char column to a nummeric one
-				if (
-					preg_match('/'.$fld->name.' (I|I2|I4|I8|N|F)/i', $tableflds, $matches)
-					&& in_array($fld->type, array('varchar', 'char', 'text', 'bytea'))
-				) {
+				if (preg_match('/'.$fld->name.' (I|I2|I4|I8|N|F)/i',$tableflds,$matches) &&
+					in_array($fld->type,array('varchar','char','text','bytea'))) {
 					$copyflds[] = "to_number($fld->name,'S9999999999999D99')";
 				} else {
 					$copyflds[] = $fld->name;
 				}
 				// identify the sequence name and the fld its on
-				if (
-					$fld->primary_key
-					&& $fld->has_default
-					&& preg_match("/nextval\('([^']+)'::text\)/", $fld->default_value, $matches)
-				) {
+				if ($fld->primary_key && $fld->has_default &&
+					preg_match("/nextval\('([^']+)'::text\)/",$fld->default_value,$matches)) {
 					$seq_name = $matches[1];
 					$seq_fld = $fld->name;
 				}
 			}
 		}
-		$copyflds = implode(', ', $copyflds);
+		$copyflds = implode(', ',$copyflds);
 
 		$tempname = $tabname.'_tmp';
-		$aSql[] = 'BEGIN'; // we use a transaction, to make sure not to loose the content of the table
+		$aSql[] = 'BEGIN';		// we use a transaction, to make sure not to loose the content of the table
 		$aSql[] = "SELECT * INTO TEMPORARY TABLE $tempname FROM $tabname";
-		$aSql = array_merge($aSql, $this->dropTableSQL($tabname));
-		$aSql = array_merge($aSql, $this->createTableSQL($tabname, $tableflds, $tableoptions));
+		$aSql = array_merge($aSql,$this->DropTableSQL($tabname));
+		$aSql = array_merge($aSql,$this->CreateTableSQL($tabname,$tableflds,$tableoptions));
 		$aSql[] = "INSERT INTO $tabname SELECT $copyflds FROM $tempname";
-		if ($seq_name && $seq_fld) { // if we have a sequence we need to set it again
-			$seq_name = $tabname.'_'.$seq_fld.'_seq'; // has to be the name of the new implicit sequence
-			$aSql[] = "SELECT setval('$seq_name', MAX($seq_fld)) FROM $tabname";
+		if ($seq_name && $seq_fld) {	// if we have a sequence we need to set it again
+			$seq_name = $tabname.'_'.$seq_fld.'_seq';	// has to be the name of the new implicit sequence
+			$aSql[] = "SELECT setval('$seq_name',MAX($seq_fld)) FROM $tabname";
 		}
 		$aSql[] = "DROP TABLE $tempname";
-		// recreate the indexes, if they not contain one of the dropped columns
-		foreach ($this->metaIndexes($tabname) as $idx_name => $idx_data) {
-			if (
-				substr($idx_name,-5) != '_pkey'
-				&& (!$dropflds || !count(array_intersect($dropflds,$idx_data['columns'])))
-			) {
-				$aSql = array_merge(
-					$aSql,
-					$this->createIndexSQL(
-						$idx_name,
-						$tabname,
-						$idx_data['columns'],
-						$idx_data['unique'] ? array('UNIQUE') : false
-					)
-				);
+		// recreate the indexes, if they not contain one of the droped columns
+		foreach($this->MetaIndexes($tabname) as $idx_name => $idx_data)
+		{
+			if (substr($idx_name,-5) != '_pkey' && (!$dropflds || !count(array_intersect($dropflds,$idx_data['columns'])))) {
+				$aSql = array_merge($aSql,$this->CreateIndexSQL($idx_name,$tabname,$idx_data['columns'],
+					$idx_data['unique'] ? array('UNIQUE') : False));
 			}
 		}
 		$aSql[] = 'COMMIT';
 		return $aSql;
 	}
 
-	function dropTableSQL($tabname)
+	function DropTableSQL($tabname)
 	{
-		$sql = ADODB_DataDict::dropTableSQL($tabname);
+		$sql = ADODB_DataDict::DropTableSQL($tabname);
 
-		$drop_seq = $this->_dropAutoIncrement($tabname);
-		if ($drop_seq) {
-			$sql[] = $drop_seq;
-		}
+		$drop_seq = $this->_DropAutoIncrement($tabname);
+		if ($drop_seq) $sql[] = $drop_seq;
+
 		return $sql;
 	}
 
 	// return string must begin with space
-	function _createSuffix($fname, &$ftype, $fnotnull, $fdefault, $fautoinc, $fconstraint, $funsigned)
+	function _CreateSuffix($fname, &$ftype, $fnotnull,$fdefault,$fautoinc,$fconstraint,$funsigned)
 	{
 		if ($fautoinc) {
 			$ftype = 'SERIAL';
@@ -407,37 +396,37 @@ class ADODB2_postgres extends ADODB_DataDict
 		return $suffix;
 	}
 
-	// search for a sequece for the given table (assumes the sequence-name contains the table-name!)
+	// search for a sequece for the given table (asumes the seqence-name contains the table-name!)
 	// if yes return sql to drop it
-	// This is still necessary if postgres < 7.3 or the SERIAL was created on an earlier version!!!
-	function _dropAutoIncrement($tabname)
+	// this is still necessary if postgres < 7.3 or the SERIAL was created on an earlier version!!!
+	function _DropAutoIncrement($tabname)
 	{
 		$tabname = $this->connection->quote('%'.$tabname.'%');
 
-		$seq = $this->connection->getOne("SELECT relname FROM pg_class WHERE NOT relname ~ 'pg_.*' AND relname LIKE $tabname AND relkind='S'");
+		$seq = $this->connection->GetOne("SELECT relname FROM pg_class WHERE NOT relname ~ 'pg_.*' AND relname LIKE $tabname AND relkind='S'");
 
 		// check if a tables depends on the sequenz and it therefor cant and dont need to be droped separatly
-		if (!$seq || $this->connection->getOne("SELECT relname FROM pg_class JOIN pg_depend ON pg_class.relfilenode=pg_depend.objid WHERE relname='$seq' AND relkind='S' AND deptype='i'")) {
-			return false;
+		if (!$seq || $this->connection->GetOne("SELECT relname FROM pg_class JOIN pg_depend ON pg_class.relfilenode=pg_depend.objid WHERE relname='$seq' AND relkind='S' AND deptype='i'")) {
+			return False;
 		}
 		return "DROP SEQUENCE ".$seq;
 	}
 
-	function renameTableSQL($tabname, $newname)
+	function RenameTableSQL($tabname,$newname)
 	{
 		if (!empty($this->schema)) {
-			$rename_from = $this->tableName($tabname);
+			$rename_from = $this->TableName($tabname);
 			$schema_save = $this->schema;
 			$this->schema = false;
-			$rename_to = $this->tableName($newname);
+			$rename_to = $this->TableName($newname);
 			$this->schema = $schema_save;
-			return array(sprintf($this->renameTable, $rename_from, $rename_to));
+			return array (sprintf($this->renameTable, $rename_from, $rename_to));
 		}
 
-		return array(sprintf($this->renameTable, $this->tableName($tabname), $this->tableName($newname)));
+		return array (sprintf($this->renameTable, $this->TableName($tabname),$this->TableName($newname)));
 	}
 
-	/**
+	/*
 	CREATE [ [ LOCAL ] { TEMPORARY | TEMP } ] TABLE table_name (
 	{ column_name data_type [ DEFAULT default_expr ] [ column_constraint [, ... ] ]
 	| table_constraint } [, ... ]
@@ -462,7 +451,7 @@ class ADODB2_postgres extends ADODB_DataDict
 	*/
 
 
-	/**
+	/*
 	CREATE [ UNIQUE ] INDEX index_name ON table
 [ USING acc_method ] ( column [ ops_name ] [, ...] )
 [ WHERE predicate ]
@@ -470,18 +459,17 @@ CREATE [ UNIQUE ] INDEX index_name ON table
 [ USING acc_method ] ( func_name( column [, ... ]) [ ops_name ] )
 [ WHERE predicate ]
 	*/
-	function _indexSQL($idxname, $tabname, $flds, $idxoptions)
+	function _IndexSQL($idxname, $tabname, $flds, $idxoptions)
 	{
 		$sql = array();
 
-		if (isset($idxoptions['REPLACE']) || isset($idxoptions['DROP'])) {
+		if ( isset($idxoptions['REPLACE']) || isset($idxoptions['DROP']) ) {
 			$sql[] = sprintf ($this->dropIndex, $idxname, $tabname);
-			if (isset($idxoptions['DROP'])) {
+			if ( isset($idxoptions['DROP']) )
 				return $sql;
-			}
 		}
 
-		if (empty($flds)) {
+		if ( empty ($flds) ) {
 			return $sql;
 		}
 
@@ -489,177 +477,130 @@ CREATE [ UNIQUE ] INDEX index_name ON table
 
 		$s = 'CREATE' . $unique . ' INDEX ' . $idxname . ' ON ' . $tabname . ' ';
 
-		if (isset($idxoptions['HASH'])) {
+		if (isset($idxoptions['HASH']))
 			$s .= 'USING HASH ';
-		}
-		
-		if (isset($idxoptions[$this->upperName])) {
-			$s .= $idxoptions[$this->upperName];
-		}
 
-		if (is_array($flds)) {
-			$flds = implode(', ', $flds);
-		}
+		if ( isset($idxoptions[$this->upperName]) )
+			$s .= $idxoptions[$this->upperName];
+
+		if ( is_array($flds) )
+			$flds = implode(', ',$flds);
 		$s .= '(' . $flds . ')';
 		$sql[] = $s;
 
 		return $sql;
 	}
 
-	function _getSize($ftype, $ty, $fsize, $fprec, $options=false)
+	function _GetSize($ftype, $ty, $fsize, $fprec)
 	{
 		if (strlen($fsize) && $ty != 'X' && $ty != 'B' && $ty  != 'I' && strpos($ftype,'(') === false) {
 			$ftype .= "(".$fsize;
-			if (strlen($fprec)) {
-				$ftype .= ",".$fprec;
-			}
+			if (strlen($fprec)) $ftype .= ",".$fprec;
 			$ftype .= ')';
 		}
-
-		/**
-		* Handle additional options
-		*/
-		if (is_array($options)) {
-			foreach ($options as $type=>$value) {
-				switch ($type) {
-					case 'ENUM':
-					$ftype .= '(' . $value . ')';
-					break;
-
-					default:
-				}
-			}
-		}
-
 		return $ftype;
 	}
 
         /**
-	 * "Florian Buzin [ easywe ]" <florian.buzin#easywe.de>
-	 *
-	 * This function changes/adds new fields to your table. You don't
-	 * have to know if the col is new or not. It will check on its own.
+	"Florian Buzin [ easywe ]" <florian.buzin#easywe.de>
+
+	This function changes/adds new fields to your table. You don't
+	have to know if the col is new or not. It will check on its own.
 	*/
-	function changeTableSQL($tablename, $flds, $tableoptions = false, $dropOldFlds=false)
+	function ChangeTableSQL($tablename, $flds, $tableoptions = false, $dropOldFlds=false)
 	{
-		global $ADODB_FETCH_MODE;
+	global $ADODB_FETCH_MODE;
 
 		$save = $ADODB_FETCH_MODE;
 		$ADODB_FETCH_MODE = ADODB_FETCH_ASSOC;
-		if ($this->connection->fetchMode !== false) {
-			$savem = $this->connection->setFetchMode(false);
-		}
+		if ($this->connection->fetchMode !== false) $savem = $this->connection->SetFetchMode(false);
 
 		// check table exists
 		$save_handler = $this->connection->raiseErrorFn;
 		$this->connection->raiseErrorFn = '';
-		$cols = $this->metaColumns($tablename);
+		$cols = $this->MetaColumns($tablename);
 		$this->connection->raiseErrorFn = $save_handler;
 
-		if (isset($savem)) {
-			$this->connection->setFetchMode($savem);
-		}
-
+		if (isset($savem)) $this->connection->SetFetchMode($savem);
 		$ADODB_FETCH_MODE = $save;
 
-		if (empty($cols)) {
-			return $this->createTableSQL($tablename, $flds, $tableoptions);
+		if ( empty($cols)) {
+			return $this->CreateTableSQL($tablename, $flds, $tableoptions);
 		}
 
-		$addedcols = array();
-		$modifiedcols = array();
-
+                $addedcols = array();
+                $modifiedcols = array();
+                
 		if (is_array($flds)) {
-			// Cycle through the update fields, comparing
-			// existing fields to fields to update.
-			// if the Metatype and size is exactly the
-			// same, ignore - by Mark Newham
-			foreach ($flds as $k=>$v) {
-				if (isset($cols[$k]) && is_object($cols[$k])) {
+		// Cycle through the update fields, comparing
+		// existing fields to fields to update.
+		// if the Metatype and size is exactly the
+		// same, ignore - by Mark Newham
+			foreach($flds as $k=>$v) {
+				if ( isset($cols[$k]) && is_object($cols[$k]) ) {
 					// If already not allowing nulls, then don't change
 					$obj = $cols[$k];
-					if (isset($obj->not_null) && $obj->not_null) {
-						$v = str_replace('NOT NULL', '', $v);
-					}
-					if (isset($obj->auto_increment) && $obj->auto_increment && empty($v['AUTOINCREMENT'])) {
-						$v = str_replace('AUTOINCREMENT', '', $v);
-					}
+					if (isset($obj->not_null) && $obj->not_null)
+						$v = str_replace('NOT NULL','',$v);
+					if (isset($obj->auto_increment) && $obj->auto_increment && empty($v['AUTOINCREMENT']))
+					    $v = str_replace('AUTOINCREMENT','',$v);
 
 					$c = $cols[$k];
 					$ml = $c->max_length;
-					$mt = $this->metaType($c->type, $ml);
+					$mt = $this->MetaType($c->type,$ml);
 
-					if (isset($c->scale)) {
-						$sc = $c->scale;
-					} else {
-						$sc = 99; // always force change if scale not known.
-					}
+					if (isset($c->scale)) $sc = $c->scale;
+					else $sc = 99; // always force change if scale not known.
 
-					if ($sc == -1) {
-						$sc = false;
-					}
+					if ($sc == -1) $sc = false;
 					list($fsize, $fprec) = $this->_getSizePrec($v['SIZE']);
 
-					if ($ml == -1) {
-						$ml = '';
-					}
-					if ($mt == 'X') {
-						$ml = $v['SIZE'];
-					}
-					if (
-						($mt != $v['TYPE'])
-						|| ($ml != $fsize || $sc != $fprec)
-						|| (isset($v['AUTOINCREMENT']) && $v['AUTOINCREMENT'] != $obj->auto_increment)
-					) {
-						$modifiedcols[$k] = $v;
+					if ($ml == -1) $ml = '';
+					if ($mt == 'X') $ml = $v['SIZE'];
+					if (($mt != $v['TYPE']) || ($ml != $fsize || $sc != $fprec) || (isset($v['AUTOINCREMENT']) && $v['AUTOINCREMENT'] != $obj->auto_increment)) {
+                                                $modifiedcols[$k] = $v;
                                         }
 				} else {
-					$addedcols[$k] = $v;
+                                        $addedcols[$k] = $v;
 				}
 			}
 		}
 
+
 		$sql = array();
-		$sql = $this->addColumnSQL($tablename, $addedcols);
+                $sql = $this->AddColumnSQL($tablename, $addedcols);
 
-		// already exists, alter table instead
-		list($lines, $pkey, $idxs) = $this->_genFields($modifiedcols);
+                // already exists, alter table instead
+		list($lines,$pkey,$idxs) = $this->_GenFields($modifiedcols);
 		// genfields can return FALSE at times
-		if ($lines == null) {
-			$lines = array();
-		}
+		if ($lines == null) $lines = array();
 
-		$holdflds = array();
-		foreach ($lines as $id => $v) {
-			if (isset($cols[$id]) && is_object($cols[$id])) {
-				$flds = lens_ParseArgs($v, ',');
+                $holdflds = array();
+		foreach ( $lines as $id => $v ) {
+			if ( isset($cols[$id]) && is_object($cols[$id]) ) {
+
+				$flds = Lens_ParseArgs($v,',');
 
 				//  We are trying to change the size of the field, if not allowed, simply ignore the request.
 				// $flds[1] holds the type, $flds[2] holds the size -postnuke addition
-				if (
-					$flds
-					&& in_array(strtoupper(substr($flds[0][1], 0, 4)), $this->invalidResizeTypes4)
-					&& (isset($flds[0][2]) && is_numeric($flds[0][2]))
-				) {
-					if ($this->debug) {
-						ADOConnection::outp(sprintf("<h3>%s cannot be changed to %s currently</h3>", $flds[0][0], $flds[0][1]));
-					}
+				if ($flds && in_array(strtoupper(substr($flds[0][1],0,4)),$this->invalidResizeTypes4)
+				 && (isset($flds[0][2]) && is_numeric($flds[0][2]))) {
+					if ($this->debug) ADOConnection::outp(sprintf("<h3>%s cannot be changed to %s currently</h3>", $flds[0][0], $flds[0][1]));
+					#echo "<h3>$this->alterCol cannot be changed to $flds currently</h3>";
 					continue;
 	 			}
                                 $holdflds[] = $modifiedcols[$id];
 			}
 		}
                 $modifiedcols = $holdflds;
-                $sql += $this->alterColumnSQL($tablename, $modifiedcols);
+                $sql += $this->AlterColumnSQL($tablename, $modifiedcols);
 
                 if ($dropOldFlds) {
-                        $alter = 'ALTER TABLE ' . $this->tableName($tablename);
-			foreach ($cols as $id => $v) {
-				if (!isset($lines[$id])) {
+                        $alter = 'ALTER TABLE ' . $this->TableName($tablename);
+			foreach ( $cols as $id => $v )
+			    if ( !isset($lines[$id]) )
 					$sql[] = $alter . $this->dropCol . ' ' . $v->name;
-				}
-			}
 		}
 		return $sql;
 	}
-} // end class
+}

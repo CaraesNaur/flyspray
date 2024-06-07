@@ -71,7 +71,7 @@ function resizeImage($file, $max_x, $max_y, $forcePng = false)
 }
 
 if (Req::num('task_id')) {
-    $task = Flyspray::getTaskDetails(Req::num('task_id'));
+    $task = Flyspray::GetTaskDetails(Req::num('task_id'));
 }
 
 if(isset($_SESSION)) {
@@ -84,22 +84,11 @@ switch ($action = Req::val('action'))
     // Adding a new task
     // ##################
     case 'newtask.newtask':
-
-		$newtaskerrors=array();
-
-		if (!Post::val('item_summary') || trim(Post::val('item_summary')) == '') { // description not required anymore
-			$newtaskerrors['summaryrequired']=1;
-		}
-
-		if ($user->isAnon() && !filter_var(Post::val('anon_email'), FILTER_VALIDATE_EMAIL)) {
-			$newtaskerrors['invalidemail']=1;
-		}
-
-		if (count($newtaskerrors)>0){
-			$_SESSION['ERRORS']=$newtaskerrors;
-			$_SESSION['ERROR']=L('invalidnewtask');
-			break;
-		}
+        if (!Post::val('item_summary') || trim(Post::val('item_summary')) == '') {//description not required
+            #Flyspray::show_error(L('summaryanddetails'));
+            Flyspray::show_error(L('summaryrequired'));
+            break;
+        }
 
         list($task_id, $token) = Backend::create_task($_POST);
         // Status and redirect
@@ -107,9 +96,9 @@ switch ($action = Req::val('action'))
             $_SESSION['SUCCESS'] = L('newtaskadded');
 
             if ($user->isAnon()) {
-                Flyspray::redirect(createURL('details', $task_id, null, array('task_token' => $token)));
+                Flyspray::Redirect(CreateURL('details', $task_id, null, array('task_token' => $token)));
             } else {
-                Flyspray::redirect(createURL('details', $task_id));
+                Flyspray::Redirect(CreateURL('details', $task_id));
             }
         } else {
             Flyspray::show_error(L('databasemodfailed'));
@@ -155,8 +144,8 @@ switch ($action = Req::val('action'))
             $ticket = array();
             foreach($_POST as $key => $value) {
                 if($key == "assigned_to") {
-                    $sql = $db->query("SELECT user_id FROM {users} WHERE user_name = ? or real_name = ?", array($value[$i], $value[$i]));
-                    $ticket["rassigned_to"] = array(intval($db->fetchOne($sql)));
+                    $sql = $db->Query("SELECT user_id FROM {users} WHERE user_name = ? or real_name = ?", array($value[$i], $value[$i]));
+                    $ticket["rassigned_to"] = array(intval($db->FetchOne($sql)));
                     continue;
                 }
                 if(is_array($value))
@@ -177,7 +166,7 @@ switch ($action = Req::val('action'))
         }
 
         $_SESSION['SUCCESS'] = L('newtaskadded');
-        Flyspray::redirect(createURL('index', $proj->id));
+        Flyspray::Redirect(CreateURL('index', $proj->id));
         break;
 
         // ##################
@@ -200,10 +189,10 @@ switch ($action = Req::val('action'))
 	$move=0;
 	if($task['project_id'] != Post::val('project_id')) {
 		$toproject=new Project(Post::val('project_id'));
-		if($user->perms('modify_all_tasks', $toproject->id)){
+		if($user->can_open_task($toproject)){
 			$move=1;
 		} else{
-			$errors['invalidtargetproject']=1;
+			$errors['movingtorestrictedproject']=1;
 		}
 	}
 
@@ -211,7 +200,7 @@ switch ($action = Req::val('action'))
 		# Check that a task is not moved to a different project than its
 		# possible parent or subtasks. Note that even closed tasks are
 		# included in the result, a task can be always reopened later.
-		$result = $db->query('
+		$result = $db->Query('
 			SELECT parent.task_id, parent.project_id FROM {tasks} p
 			JOIN {tasks} parent ON parent.task_id = p.supertask_id
 			WHERE p.task_id = ?
@@ -225,7 +214,7 @@ switch ($action = Req::val('action'))
 			}
 		}
 
-		$result = $db->query('
+		$result = $db->Query('
 			SELECT sub.task_id, sub.project_id FROM {tasks} p
 			JOIN {tasks} sub ON p.task_id = sub.supertask_id
 			WHERE p.task_id = ?
@@ -248,11 +237,11 @@ switch ($action = Req::val('action'))
 		$errors['summaryrequired']=L('summaryrequired');
         }
 
-	# ids of severity and priority are (probably!) intentional fixed in Flyspray.
+	# ids of severity and priority are (probably!) intentional fixed in Flyspray. 
 	if( isset($_POST['task_severity']) && (!is_numeric(Post::val('task_severity')) || Post::val('task_severity')>5 || Post::val('task_severity')<0 ) ){
 		$errors['invalidseverity']=1;
 	}
-
+	
 	# peterdd:temp fix to allow priority 6 again
 	# But I think about 1-5 valid (and 0 for unset) only in future to harmonize
 	# with other trackers/taskplaner software and for severity-priority graphs like
@@ -281,7 +270,7 @@ switch ($action = Req::val('action'))
 	# -option to create a new option based on current project value (if the user has the permission for the target project!)
 	# -option to set to default value in target project or unset value
 	# Also consider that not all list dropdown field may be shown to the user because of project settings (visible_fields)!
-
+	
 
 	# which $proj should we use here? $proj object is set in header.php by a request param before modify.inc.php is loaded, so it can differ from $task['project_id']!
 	if($move==1){
@@ -309,9 +298,9 @@ switch ($action = Req::val('action'))
 	}
 
         # FIXME what if we move to different project and reportedver selection is deactivated/not shown in edit task page?
-        # FIXME what if we move to different project and reportedver is deactivated/not shown in edit task page?
+        # FIXME what if we move to different project and reportedver is deactiveated/not shown in edit task page?
         # FIXME what if we move to different project and closedby_version selection is deactivated/not shown in edit task page?
-        # FIXME what if we move to different project and closedby_version is deactivated/not shown in edit task page?
+        # FIXME what if we move to different project and closedby_version is deactiveated/not shown in edit task page?
 	if($move==1){
 		$versionarray=$toproject->listVersions();
 	} else{
@@ -351,15 +340,15 @@ switch ($action = Req::val('action'))
 	}
 
         $estimated_effort = 0;
-        if (($estimated_effort = effort::editStringToSeconds(Post::val('estimated_effort'), $proj->prefs['hours_per_manday'], $proj->prefs['estimated_effort_format'])) === FALSE) {
+        if (($estimated_effort = effort::EditStringToSeconds(Post::val('estimated_effort'), $proj->prefs['hours_per_manday'], $proj->prefs['estimated_effort_format'])) === FALSE) {
 		$errors['invalideffort']=1;
         }
 
         $time = time();
 
-        $result = $db->query('SELECT * from {tasks} WHERE task_id = ?', array($task['task_id']));
+        $result = $db->Query('SELECT * from {tasks} WHERE task_id = ?', array($task['task_id']));
         $defaults = $db->fetchRow($result);
-
+        
 	if (!Post::has('due_date')) {
 		$due_date = $defaults['due_date'];
 	}
@@ -372,11 +361,11 @@ switch ($action = Req::val('action'))
 	if(count($errors)>0){
 		# some invalid input by the user. Do not save the input and in the details-edit-template show the user where in the form the invalid values are.
 		$_SESSION['ERRORS']=$errors; # $_SESSION['ERROR'] is very limited, holds only one string and often just overwritten
-		$_SESSION['ERROR']=L('invalidinput');
+		$_SESSION['ERROR']=L('invalidinput'); 
 		# pro and contra http 303 redirect here:
                 # - good: browser back button works, browser history.
                 # -  bad: form inputs of user not preserved (at the moment). Annoying if user wrote a long description and then the form submit gets denied because of other reasons.
-                #Flyspray::redirect(createURL('edittask', $task['task_id']));
+                #Flyspray::Redirect(CreateURL('edittask', $task['task_id']));
 		break;
 	}
 
@@ -413,23 +402,19 @@ switch ($action = Req::val('action'))
 	$sqlupdate='UPDATE {tasks} SET '.$sqlup.' WHERE task_id = ?';
 
 	echo '<pre>';print_r($sqlupdate);print_r($sqlparam);die();
-	$db->query($sqlupdate, $sqlparam);
+	$db->Query($sqlupdate, $sqlparam);
 */
 
 	$detailed_desc = Post::val('detailed_desc', $defaults['detailed_desc']);
 
 	# dokuwiki syntax plugin filters on output
-	if ($conf['general']['syntax_plugin'] != 'dokuwiki') {
+	if($conf['general']['syntax_plugin'] != 'dokuwiki'){
 		$purifierconfig = HTMLPurifier_Config::createDefault();
-		$purifierconfig->set('CSS.AllowedProperties', array());
-		if ($fs->prefs['relnofollow']) {
-			$purifierconfig->set('HTML.Nofollow', true);
-		}
 		$purifier = new HTMLPurifier($purifierconfig);
 		$detailed_desc = $purifier->purify($detailed_desc);
 	}
-
-	$db->query('UPDATE {tasks}
+		
+	$db->Query('UPDATE {tasks}
 		SET
 		project_id = ?,
 		task_type = ?,
@@ -469,157 +454,64 @@ switch ($action = Req::val('action'))
 		)
 	);
 
-		// Update the list of users assigned to this task
-		$assignees = array();
-		if (isset($_POST['rassigned_to']) && is_array($_POST['rassigned_to'])) {
-			foreach ($_POST['rassigned_to'] as $ass) {
-				if (is_numeric($ass)) {
-					$assignees[] = $ass;
-				}
-			}
-		}
-		$assignees_changed = count(array_diff($task['assigned_to'], $assignees)) + count(array_diff($assignees, $task['assigned_to']));
-		
-		if ($user->perms('edit_assignments') && $assignees_changed) {
-			// TODO: only update assignee changes without deletion
-			// So date of assignment is kept if table {assigned} gets a timestamp field 'added' someday.
-			// Delete the current assignees for this task
-			$db->query('DELETE FROM {assigned} WHERE task_id = ?', array($task['task_id']));
-			foreach ($assignees as $val) {
-				$db->replace('{assigned}', array('user_id'=> $val, 'task_id'=> $task['task_id']), array('user_id', 'task_id'));
-			}
-		}
+        // Update the list of users assigned this task
+        $assignees = (array) Post::val('rassigned_to');
+        $assignees_changed = count(array_diff($task['assigned_to'], $assignees)) + count(array_diff($assignees, $task['assigned_to']));
+        if ($user->perms('edit_assignments') && $assignees_changed) {
 
-		# FIXME what if we move to different project, but tag(s) is/are defined for the old project only (not global)?
-		# FIXME what if we move to different project and tag input field is deactivated/not shown in edit task page?
-		#   - Create new tag(s) in target project if user has permission to create new tags but what with the users who have not the permission?
-		# update tags
-		$tagList = explode(';', Post::val('tags'));
-		$tagList = array_map('strip_tags', $tagList);
-		$tagList = array_map('trim', $tagList);
-		$tagList = array_unique($tagList); # avoid duplicates for inputs like: "tag1;tag1" or "tag1; tag1<p></p>"
-		$storedtags=array();
-		foreach($task['tags'] as $temptag){
-			$storedtags[]=$temptag['tag'];
-		}
-		$tags_changed = count(array_diff($storedtags, $tagList)) + count(array_diff($tagList, $storedtags));
+            // Delete the current assignees for this task
+            $db->Query('DELETE FROM {assigned}
+                              WHERE task_id = ?',
+            array($task['task_id']));
 
-		if ($tags_changed) {
-			/*
-			// Delete the current assigned tags for this task
-			$db->query('DELETE FROM {task_tag} WHERE task_id = ?',  array($task['task_id']));
-			foreach ($tagList as $tag){
-				if ($tag == ''){
+            // Convert assigned_to and store them in the 'assigned' table
+            foreach ((array) Post::val('rassigned_to') as $key => $val)
+            {
+                $db->Replace('{assigned}', array('user_id'=> $val, 'task_id'=> $task['task_id']), array('user_id','task_id'));
+            }
+        }
+
+	# FIXME what if we move to different project, but tag(s) is/are defined for the old project only (not global)?
+	# FIXME what if we move to different project and tag input field is deactivated/not shown in edit task page?
+	#   - Create new tag(s) in target project if user has permission to create new tags but what with the users who have not the permission?
+	# update tags
+        $tagList = explode(';', Post::val('tags'));  
+        $tagList = array_map('strip_tags', $tagList);
+        $tagList = array_map('trim', $tagList);
+        $tagList = array_unique($tagList); # avoid duplicates for inputs like: "tag1;tag1" or "tag1; tag1<p></p>"
+        $tags_changed = count(array_diff($task['tags'], $tagList)) + count(array_diff($tagList, $task['tags']));
+
+	if($tags_changed){
+		// Delete the current assigned tags for this task
+		$db->Query('DELETE FROM {task_tag} WHERE task_id = ?',  array($task['task_id']));
+		foreach ($tagList as $tag){
+			if ($tag == ''){
+				continue;
+			}
+
+			$res=$db->Query("SELECT tag_id FROM {list_tag} WHERE (project_id=0 OR project_id=?) AND tag_name LIKE ? ORDER BY project_id", array($proj->id,$tag) );
+			if($t=$db->FetchRow($res)){  
+				$tag_id=$t['tag_id'];
+			} else{
+				if( $proj->prefs['freetagging']==1){   
+					# add to taglist of the project
+					$db->Query("INSERT INTO {list_tag} (project_id,tag_name) VALUES (?,?)", array($proj->id,$tag));
+					$tag_id=$db->Insert_ID();
+				} else{
 					continue;
 				}
-				# size of {list_tag}.tag_name, see flyspray-install.xml
-				if(mb_strlen($tag) > 40){
-					# report that softerror
-					$errors['tagtoolong']=1;
-					continue;
-				}
-
-				$res=$db->query("SELECT tag_id FROM {list_tag} WHERE (project_id=0 OR project_id=?) AND tag_name LIKE ? ORDER BY project_id", array($proj->id,$tag) );
-				if($t=$db->fetchRow($res)){
-					$tag_id=$t['tag_id'];
-				} else {
-					if( $proj->prefs['freetagging']==1){
-						# add to taglist of the project
-						$db->query("INSERT INTO {list_tag} (project_id,tag_name) VALUES (?,?)", array($proj->id,$tag));
-						$tag_id=$db->insert_ID();
-					} else{
-						continue;
-					}
-				};
-				$db->query("INSERT INTO {task_tag}(task_id,tag_id) VALUES(?,?)", array($task['task_id'], $tag_id) );
-			}
-			*/
-
-			foreach ($tagList as $tag){
-				if ($tag == ''){
-					continue;
-				}
-
-				if (in_array($tag, $storedtags) ){
-					echo "\n<br>in array storetags: $tag";
-					# no db change required, just drop this tag from $storedtags
-					$storedtags = array_diff($storedtags, array($tag));
-				} else {
-					$res=$db->query("SELECT tag_id
-						FROM {list_tag}
-						WHERE (project_id=0 OR project_id=?)
-						AND tag_name LIKE ?
-						ORDER BY project_id",
-						array($proj->id, $tag)
-					);
-
-					if ($t=$db->fetchRow($res)) {
-						$tag_id=$t['tag_id'];
-					} else {
-						if ($proj->prefs['freetagging']==1) {
-							# size of {list_tag}.tag_name, see flyspray-install.xml
-							if (mb_strlen($tag) > 40) {
-								# report that softerror
-								$errors['tagtoolong']=1;
-								continue;
-							}
-
-							# add to taglist of the project, not global
-							$db->query("INSERT INTO {list_tag} (project_id,tag_name) VALUES (?,?)", array($proj->id, $tag));
-							$tag_id=$db->insert_ID();
-						} else {
-							continue;
-						}
-					}
-					$db->query("INSERT INTO {task_tag} (task_id, tag_id, added, added_by)
-						VALUES(?, ?, ?, ?)",
-						array($task['task_id'], $tag_id, time(), $user->id)
-					);
-				}
-			}
-
-			# What is left in $storedtags should be removed
-			# TODO: Log the remove of a tag from a task to {history} table?
-			if (count($storedtags)>0) {
-				# get ids of storedtags
-				$removetags=array();
-				foreach ($storedtags as $tagname) {
-					$res=$db->query("SELECT tag_id
-						FROM {list_tag}
-						WHERE (project_id=0 OR project_id=?)
-						AND tag_name LIKE ?
-						ORDER BY project_id",
-						array($proj->id, $tagname)
-					);
-
-					if ($t=$db->fetchRow($res)) {
-						$tag_id=$t['tag_id'];
-						$removetags[]=$tag_id;
-
-						# maybe tag same name stored as global and project so remove both to be sure.
-						if ($t=$db->fetchRow($res)) {
-							$tag_id=$t['tag_id'];
-							$removetags[]=$tag_id;
-						}
-					}
-				}
-
-				if (count($removetags)>0) {
-					$db->query(
-						'DELETE FROM {task_tag} WHERE task_id = ? AND tag_id IN('.implode(',', $removetags).')',
-						array($task['task_id'])
-					);
-				}
-			}
+			};
+			$db->Query("INSERT INTO {task_tag}(task_id,tag_id) VALUES(?,?)", array($task['task_id'], $tag_id) );
 		}
+	}
 
         // Get the details of the task we just updated
         // To generate the changed-task message
-        $new_details_full = Flyspray::getTaskDetails($task['task_id']);
+        $new_details_full = Flyspray::GetTaskDetails($task['task_id']);
         // Not very nice...maybe combine compare_tasks() and logEvent() ?
-        $result = $db->query("SELECT * FROM {tasks} WHERE task_id = ?",
+        $result = $db->Query("SELECT * FROM {tasks} WHERE task_id = ?",
                              array($task['task_id']));
-        $new_details = $db->fetchRow($result);
+        $new_details = $db->FetchRow($result);
 
         foreach ($new_details as $key => $val) {
             if (strstr($key, 'last_edited_') || $key == 'assigned_to' || is_numeric($key)) {
@@ -634,7 +526,7 @@ switch ($action = Req::val('action'))
 
         $changes = Flyspray::compare_tasks($task, $new_details_full);
         if (count($changes) > 0) {
-            $notify->create(NOTIFY_TASK_CHANGED, $task['task_id'], $changes, null, NOTIFY_BOTH, $proj->prefs['lang_code']);
+            $notify->Create(NOTIFY_TASK_CHANGED, $task['task_id'], $changes, null, NOTIFY_BOTH, $proj->prefs['lang_code']);
         }
 
         if ($assignees_changed) {
@@ -646,73 +538,57 @@ switch ($action = Req::val('action'))
                 $new_assignees = array_diff($task['assigned_to'], $assignees);
                 // Remove current user from notification list
                 if (!$user->infos['notify_own']) {
-                    $new_assignees = array_filter($new_assignees, function($u) use($user) { return $user->id != $u; } );
+                    $new_assignees = array_filter($new_assignees, create_function('$u', 'global $user; return $user->id != $u;'));
                 }
                 if(count($new_assignees)) {
-                    $notify->create(NOTIFY_NEW_ASSIGNEE, $task['task_id'], null, $notify->specificAddresses($new_assignees), NOTIFY_BOTH, $proj->prefs['lang_code']);
+                    $notify->Create(NOTIFY_NEW_ASSIGNEE, $task['task_id'], null, $notify->SpecificAddresses($new_assignees), NOTIFY_BOTH, $proj->prefs['lang_code']);
                 }
             }
         }
 
-		Backend::add_comment($task, Post::val('comment_text'), $time);
-		if (isset($_POST['delete_att']) && is_array($_POST['delete_att'])) {
-			Backend::delete_files($_POST['delete_att']);
-		}
-		Backend::upload_files($task['task_id'], '0', 'usertaskfile');
-		if (isset($_POST['delete_link']) && is_array($_POST['delete_link'])) {
-			Backend::delete_links($_POST['delete_link']);
-		}
-		Backend::upload_links($task['task_id'], '0', 'userlink');
+        Backend::add_comment($task, Post::val('comment_text'), $time);
+        Backend::delete_files(Post::val('delete_att'));
+        Backend::upload_files($task['task_id'], '0', 'usertaskfile');
+        Backend::delete_links(Post::val('delete_link'));
+        Backend::upload_links($task['task_id'], '0', 'userlink');
 
-		$_SESSION['SUCCESS'] = L('taskupdated');
-		# report minor/soft errors too that does not hindered saving task
-		if(count($errors)>0){
-			$_SESSION['ERRORS']=$errors;
-		}
-		Flyspray::redirect(createURL('details', $task['task_id']));
-		break;
+        $_SESSION['SUCCESS'] = L('taskupdated');
+        Flyspray::Redirect(CreateURL('details', $task['task_id']));
+        break;
 
-	/**
-	 * closing a task
-	 */
-	case 'details.close':
-		if (!$user->can_close_task($task)) {
-			break;
-		}
+        // ##################
+        // closing a task
+        // ##################
+    case 'details.close':
+        if (!$user->can_close_task($task)) {
+            break;
+        }
 
-		if ($task['is_closed']) {
-			break;
-		}
+        if ($task['is_closed']) {
+            break;
+        }
 
-		if (!Post::val('resolution_reason')) {
-			Flyspray::show_error(L('noclosereason'));
-			break;
-		}
+        if (!Post::val('resolution_reason')) {
+            Flyspray::show_error(L('noclosereason'));
+            break;
+        }
 
-		// self duplicate check
-		if (Post::val('resolution_reason') == RESOLUTION_DUPLICATE) {
-			preg_match("/\b(?:FS#|bug )(\d+)\b/", Post::val('closure_comment', ''), $dupe_of);
-			if (isset($dupe_of[1]) && $task['task_id'] == $dupe_of[1]) {
-				Flyspray::show_error(L('circularduplicate'));
-				break;
-			}
-		}
+        Backend::close_task($task['task_id'], Post::val('resolution_reason'), Post::val('closure_comment', ''), Post::val('mark100', false));
 
-		Backend::close_task($task['task_id'], Post::val('resolution_reason'), Post::val('closure_comment', ''), Post::val('mark100', false));
-		$_SESSION['SUCCESS'] = L('taskclosedmsg');
-		# FIXME there are several pages using this form, details and pendingreq at least
-		#Flyspray::redirect(createURL('details', $task['task_id']));
-		break;
+        $_SESSION['SUCCESS'] = L('taskclosedmsg');
+        # FIXME there are several pages using this form, details and pendingreq at least
+        #Flyspray::Redirect(CreateURL('details', $task['task_id']));
+        break;
 
     case 'details.associatesubtask':
 	if ( $task['task_id'] == Post::num('associate_subtask_id')) {
             Flyspray::show_error(L('selfsupertasknotallowed'));
             break;
-        }
-        $sql = $db->query('SELECT supertask_id, project_id FROM {tasks} WHERE task_id = ?',
+        }	
+        $sql = $db->Query('SELECT supertask_id, project_id FROM {tasks} WHERE task_id = ?',
             array(Post::num('associate_subtask_id')));
 
-        $suptask = $db->fetchRow($sql);
+        $suptask = $db->FetchRow($sql);
 
         // check to see if the subtask exists.
         if (!$suptask) {
@@ -723,7 +599,7 @@ switch ($action = Req::val('action'))
         // if the user has not the permission to view all tasks, check if the task
         // is in tasks allowed to see, otherwise tell that the task does not exist.
         if (!$user->perms('view_tasks')) {
-            $taskcheck = Flyspray::getTaskDetails(Post::num('associate_subtask_id'));
+            $taskcheck = Flyspray::GetTaskDetails(Post::num('associate_subtask_id'));
             if (!$user->can_view_task($taskcheck)) {
                 Flyspray::show_error(L('subtasknotexist'));
                 break;
@@ -757,271 +633,239 @@ switch ($action = Req::val('action'))
         break;
 
 
-	case 'reopen':
-		/**
-		 * re-opening an task
-		 */
-		if (!$user->can_close_task($task)) {
-			break;
+    case 'reopen':
+        // ##################
+        // re-opening an task
+        // ##################
+        if (!$user->can_close_task($task)) {
+            break;
+        }
+
+        // Get last %
+        $old_percent = $db->Query("SELECT old_value, new_value
+                                     FROM {history}
+                                    WHERE field_changed = 'percent_complete'
+                                          AND task_id = ? AND old_value != '100'
+                                 ORDER BY event_date DESC
+                                    LIMIT 1",
+        array($task['task_id']));
+        $old_percent = $db->FetchRow($old_percent);
+
+        $db->Query("UPDATE  {tasks}
+                       SET  resolution_reason = 0, closure_comment = '', date_closed = 0,
+                            last_edited_time = ?, last_edited_by = ?, is_closed = 0, percent_complete = ?
+                     WHERE  task_id = ?",
+        array(time(), $user->id, intval($old_percent['old_value']), $task['task_id']));
+
+        Flyspray::logEvent($task['task_id'], 3, $old_percent['old_value'], $old_percent['new_value'], 'percent_complete');
+
+        $notify->Create(NOTIFY_TASK_REOPENED, $task['task_id'], null, null, NOTIFY_BOTH, $proj->prefs['lang_code']);
+
+        // add comment of PM request to comment page if accepted
+        $sql = $db->Query('SELECT * FROM {admin_requests} WHERE  task_id = ? AND request_type = ? AND resolved_by = 0',
+                              array($task['task_id'], 2));
+        $request = $db->FetchRow($sql);
+        if ($request) {
+            $db->Query('INSERT INTO  {comments}
+                                     (task_id, date_added, last_edited_time, user_id, comment_text)
+                             VALUES  ( ?, ?, ?, ?, ? )',
+            array($task['task_id'], time(), time(), $request['submitted_by'], $request['reason_given']));
+            // delete existing PM request
+            $db->Query('UPDATE  {admin_requests}
+                           SET  resolved_by = ?, time_resolved = ?
+                         WHERE  request_id = ?',
+            array($user->id, time(), $request['request_id']));
+        }
+
+        Flyspray::logEvent($task['task_id'], 13);
+
+        $_SESSION['SUCCESS'] = L('taskreopenedmsg');
+	# FIXME there are several pages using this form, details and pendingreq at least
+	#Flyspray::Redirect(CreateURL('details', $task['task_id']));
+        break;
+
+        // ##################
+        // adding a comment
+        // ##################
+    case 'details.addcomment':
+        if (!Backend::add_comment($task, Post::val('comment_text'))) {
+            Flyspray::show_error(L('nocommententered'));
+            break;
+        }
+
+        if (Post::val('notifyme') == '1') {
+            // If the user wanted to watch this task for changes
+            Backend::add_notification($user->id, $task['task_id']);
+        }
+
+	$_SESSION['SUCCESS'] = L('commentaddedmsg');
+	Flyspray::Redirect(CreateURL('details', $task['task_id']));
+	break;
+
+        // ##################
+        // Tracking
+        // ##################
+    case 'details.efforttracking':
+
+        require_once BASEDIR . '/includes/class.effort.php';
+        $effort = new effort($task['task_id'],$user->id);
+
+
+        if(Post::val('start_tracking')){
+            if($effort->startTracking())
+            {
+                $_SESSION['SUCCESS'] = L('efforttrackingstarted');
+            }
+            else
+            {
+                $_SESSION['ERROR'] = L('efforttrackingnotstarted');
+            }
+        }
+
+        if(Post::val('stop_tracking')){
+            $effort->stopTracking();
+            $_SESSION['SUCCESS'] = L('efforttrackingstopped');
+        }
+
+        if(Post::val('cancel_tracking')){
+            $effort->cancelTracking();
+            $_SESSION['SUCCESS'] = L('efforttrackingcancelled');
+        }
+
+	if(Post::val('manual_effort')){
+		if($effort->addEffort(Post::val('effort_to_add'), $proj)){
+			$_SESSION['SUCCESS'] = L('efforttrackingadded');
 		}
+	}
+        
+        Flyspray::Redirect(CreateURL('details', $task['task_id']).'#effort');
+        break;
 
-		// Get last %
-		$old_percent = $db->query("SELECT old_value, new_value
-			FROM {history}
-			WHERE field_changed = 'percent_complete'
-			AND task_id = ?
-			AND old_value != '100'
-			ORDER BY event_date DESC
-			LIMIT 1",
-			array($task['task_id'])
-		);
-		
-		$old_percent = $db->fetchRow($old_percent);
+        // ##################
+        // sending a new user a confirmation code
+        // ##################
+    case 'register.sendcode':
+        if (!$user->can_register()) {
+            break;
+        }
 
-		if (!isset($old_percent['old_value'])) {
-			$old_percent['old_value']=0;
-			$old_percent['new_value']=0;
-		}
-
-		$db->query("UPDATE {tasks}
-			SET resolution_reason = 0, closure_comment = '', date_closed = 0,
-			last_edited_time = ?, last_edited_by = ?, is_closed = 0, percent_complete = ?
-			WHERE task_id = ?",
-			array(time(), $user->id, intval($old_percent['old_value']), $task['task_id'])
-		);
-
-		Flyspray::logEvent($task['task_id'], 3, $old_percent['old_value'], $old_percent['new_value'], 'percent_complete');
-
-		$notify->create(NOTIFY_TASK_REOPENED, $task['task_id'], null, null, NOTIFY_BOTH, $proj->prefs['lang_code']);
-
-		// add comment of PM request to comment page if accepted
-		$sql = $db->query('SELECT * FROM {admin_requests}
-			WHERE task_id = ?
-			AND request_type = ?
-			AND resolved_by = 0',
-			array($task['task_id'], 2)
-		);
-		$request = $db->fetchRow($sql);
-
-		if ($request) {
-			$db->query('
-				INSERT INTO {comments} (task_id, date_added, last_edited_time, user_id, comment_text)
-				VALUES ( ?, ?, ?, ?, ? )',
-				array($task['task_id'], time(), time(), $request['submitted_by'], $request['reason_given'])
-			);
-			// delete existing PM request
-			$db->query('UPDATE  {admin_requests}
-				SET resolved_by = ?, time_resolved = ?
-				WHERE  request_id = ?',
-				array($user->id, time(), $request['request_id'])
-			);
-		}
-
-		Flyspray::logEvent($task['task_id'], 13);
-
-		$_SESSION['SUCCESS'] = L('taskreopenedmsg');
-		# FIXME There are several pages using this form, details and pendingreq at least.
-		#Flyspray::redirect(createURL('details', $task['task_id']));
-		break;
-
-	/**
-	 * adding a comment
-	 */
-	case 'details.addcomment':
-		if (!Backend::add_comment($task, Post::val('comment_text'))) {
-			Flyspray::show_error(L('nocommententered'));
-			break;
-		}
-
-		if (Post::val('notifyme') == '1') {
-			// If the user wanted to watch this task for changes
-			Backend::add_notification($user->id, $task['task_id']);
-		}
-
-		$_SESSION['SUCCESS'] = L('commentaddedmsg');
-		Flyspray::redirect(createURL('details', $task['task_id']));
-		break;
-
-	/**
-	 * effort tracking
-	 */
-	case 'details.efforttracking':
-
-		require_once BASEDIR . '/includes/class.effort.php';
-		$effort = new effort($task['task_id'], $user->id);
-
-		if (Post::val('start_tracking')) {
-			if ($effort->startTracking()) {
-				$_SESSION['SUCCESS'] = L('efforttrackingstarted');
-			} else {
-				$_SESSION['ERROR'] = L('efforttrackingnotstarted');
+		if($fs->prefs['captcha_securimage']){
+			$image = new Securimage(); 
+			if( !Post::isAlnum('captcha_code') || !$image->check(Post::val('captcha_code'))) {
+				# wrong code
+				Flyspray::show_error(L('captchaerror'));
+				break;
 			}
 		}
 
-		if (Post::val('stop_tracking')) {
-			$effort->stopTracking();
-			$_SESSION['SUCCESS'] = L('efforttrackingstopped');
-		}
+        if (!Post::val('user_name') || !Post::val('real_name')
+            || !Post::val('email_address'))
+        {
+            // If the form wasn't filled out correctly, show an error
+            Flyspray::show_error(L('registererror'));
+            break;
+        }
 
-		if (Post::val('cancel_tracking')) {
-			$effort->cancelTracking();
-			$_SESSION['SUCCESS'] = L('efforttrackingcancelled');
-		}
+        if (Post::val('email_address') != Post::val('verify_email_address'))
+        {
+            Flyspray::show_error(L('emailverificationwrong'));
+            break;
+        }
 
-		if (Post::val('manual_effort')) {
-			if ($effort->addEffort(Post::val('effort_to_add'), $proj, Post::val('effort_description'))) {
-				$_SESSION['SUCCESS'] = L('efforttrackingadded');
-			}
-		}
+        $email =  strtolower(Post::val('email_address'));
+        $jabber_id = strtolower(Post::val('jabber_id'));
 
-		Flyspray::redirect(createURL('details', $task['task_id']).'#effort');
-		break;
+        //email is mandatory
+        if (!$email || !Flyspray::check_email($email)) {
+            Flyspray::show_error(L('novalidemail'));
+            break;
+        }
+        //jabber_id is optional
+        if ($jabber_id && !Jabber::check_jid($jabber_id)) {
+            Flyspray::show_error(L('novalidjabber'));
+            break;
+        }
 
-	/**
-	 * sending a new user a confirmation code
-	 */
-	case 'register.sendcode':
-		if (!$user->can_register()) {
-			break;
-		}
+        $user_name = Backend::clean_username(Post::val('user_name'));
 
-		$captchaerrors=array();
-		if ($fs->prefs['captcha_securimage']) {
-			$image = new Securimage();
-			if (!Post::isAlnum('captcha_code') || !$image->check(Post::val('captcha_code'))) {
-				$captchaerrors['invalidsecurimage']=1;
-			}
-		}
+        // Limit length
+        $real_name = substr(trim(Post::val('real_name')), 0, 100);
+        // Remove doubled up spaces and control chars
+        $real_name = preg_replace('![\x00-\x1f\s]+!u', ' ', $real_name);
 
-		if ($fs->prefs['captcha_recaptcha']) {
-			require_once 'class.recaptcha.php';
-			if( !recaptcha::verify()) {
-				$captchaerrors['invalidrecaptcha']=1;
-			}
-		}
+        if (!$user_name || empty($user_name) || !$real_name) {
+            Flyspray::show_error(L('entervalidusername'));
+            break;
+        }
 
-		if (count($captchaerrors)) {
-			$_SESSION['ERRORS']=$captchaerrors;
-			Flyspray::show_error(L('captchaerror'));
-			break;
-		}
+        // Delete registration codes older than 24 hours
+        $yesterday = time() - 86400;
+        $db->Query('DELETE FROM {registrations} WHERE reg_time < ?', array($yesterday));
 
-		if (!Post::val('user_name') || !Post::val('real_name') || !Post::val('email_address')) {
-			// If the form wasn't filled out correctly, show an error
-			Flyspray::show_error(L('registererror'));
-			break;
-		}
+        $sql = $db->Query('SELECT COUNT(*) FROM {users} u, {registrations} r
+                           WHERE  u.user_name = ? OR r.user_name = ?',
+        array($user_name, $user_name));
+        if ($db->fetchOne($sql)) {
+            Flyspray::show_error(L('usernametaken'));
+            break;
+        }
 
-		if ($fs->prefs['repeat_emailaddress'] && trim(Post::val('email_address')) != trim(Post::val('verify_email_address'))) {
-			Flyspray::show_error(L('emailverificationwrong'));
-			break;
-		}
-
-		$email = strtolower(trim(Post::val('email_address')));
-		$jabber_id = strtolower(trim(Post::val('jabber_id')));
-
-		// email is mandatory
-		if (!$email || !Flyspray::check_email($email)) {
-			Flyspray::show_error(L('novalidemail'));
-			break;
-		}
-
-		// jabber_id is optional
-		if ($jabber_id && !Jabber::check_jid($jabber_id)) {
-			Flyspray::show_error(L('novalidjabber'));
-			break;
-		}
-
-		$user_name = Backend::clean_username(Post::val('user_name'));
-
-		// Limit length
-		$real_name = substr(trim(Post::val('real_name')), 0, 100);
-		// Remove doubled up spaces and control chars
-		$real_name = preg_replace('![\x00-\x1f\s]+!u', ' ', $real_name);
-
-		if (!$user_name || empty($user_name) || !$real_name) {
-			Flyspray::show_error(L('entervalidusername'));
-			break;
-		}
-
-		// Delete registration codes older than 24 hours
-		$yesterday = time() - 86400;
-		$db->query('DELETE FROM {registrations} WHERE reg_time < ?', array($yesterday));
-
-		$sql = $db->query('SELECT COUNT(*) FROM {users} u, {registrations} r
-			WHERE  u.user_name = ? OR r.user_name = ?',
-			array($user_name, $user_name));
-		if ($db->fetchOne($sql)) {
-			Flyspray::show_error(L('usernametaken'));
-			break;
-		}
-
-		$sql = $db->query("SELECT COUNT(*) FROM {users} WHERE
+        $sql = $db->Query("SELECT COUNT(*) FROM {users} WHERE
                            jabber_id = ? AND jabber_id != ''
                            OR email_address = ? AND email_address != ''",
-			array($jabber_id, $email));
-		if ($db->fetchOne($sql)) {
-			Flyspray::show_error(L('emailtaken'));
-			break;
-		}
+        array($jabber_id, $email));
+        if ($db->fetchOne($sql)) {
+            Flyspray::show_error(L('emailtaken'));
+            break;
+        }
 
-		// Generate a random bunch of numbers for the confirmation code and the confirmation url
-		foreach (array('randval','magic_url') as $genrandom) {
-			$$genrandom = md5(function_exists('openssl_random_pseudo_bytes') ?
-				openssl_random_pseudo_bytes(32) :
-				uniqid(mt_rand(), true));
-		}
+        // Generate a random bunch of numbers for the confirmation code and the confirmation url
 
-		$confirm_code = substr($randval, 0, 10);
+        foreach(array('randval','magic_url') as $genrandom) {
 
-		// send the email first
-		$userconfirmation = array();
-		$userconfirmation[$email] = array(
-			'recipient' => $email, 
-			'lang' => $fs->prefs['lang_code']
-			);
-		$recipients = array($userconfirmation);
-		if($notify->create(
-			NOTIFY_CONFIRMATION,
-			null,
-			array($baseurl, $magic_url, $user_name, $confirm_code),
-			$recipients,
-			NOTIFY_EMAIL)
-		) {
-			// email sent successfully, now update the database.
-			$reg_values = array(
-				time(),
-				$confirm_code,
-				$user_name,
-				$real_name,
-				$email,
-				$jabber_id,
-				Post::num('notify_type'),
-				$magic_url,
-				Post::num('time_zone')
-			);
-			// Insert everything into the database
-			$query = $db->query("INSERT INTO  {registrations}
-				(reg_time, confirm_code, user_name, real_name,
-				email_address, jabber_id, notify_type,
-				magic_url, time_zone)
-				VALUES ( " . $db->fill_placeholders($reg_values) . ' )',
-				$reg_values);
+            $$genrandom = md5(function_exists('openssl_random_pseudo_bytes') ?
+                              openssl_random_pseudo_bytes(32) :
+                              uniqid(mt_rand(), true));
+        }
 
-			if ($query) {
-				$_SESSION['SUCCESS'] = L('codesent');
-				Flyspray::redirect($baseurl);
-			}
-		} else {
-			Flyspray::show_error(L('codenotsent'));
-			break;
-		}
-		break;
+        $confirm_code = substr($randval, 0, 20);
 
-	/**
-	 * new user self-registration with a confirmation code
-	 */
-	case 'register.registeruser':
+        // echo "<pre>Am I here?</pre>";
+        // send the email first
+        $userconfirmation = array();
+        $userconfirmation[$email] = array('recipient' => $email, 'lang' => $fs->prefs['lang_code']);
+        $recipients = array($userconfirmation);
+        if($notify->Create(NOTIFY_CONFIRMATION, null, array($baseurl, $magic_url, $user_name, $confirm_code),
+            $recipients,
+            NOTIFY_EMAIL)) {
+
+            //email sent succefully, now update the database.
+            $reg_values = array(time(), $confirm_code, $user_name, $real_name,
+                        $email, $jabber_id,
+                        Post::num('notify_type'), $magic_url, Post::num('time_zone'));
+            // Insert everything into the database
+            $query = $db->Query("INSERT INTO  {registrations}
+                                 ( reg_time, confirm_code, user_name, real_name,
+                                   email_address, jabber_id, notify_type,
+                                   magic_url, time_zone )
+                         VALUES ( " . $db->fill_placeholders($reg_values) . ' )', $reg_values);
+
+            if ($query) {
+                $_SESSION['SUCCESS'] = L('codesent');
+                Flyspray::Redirect($baseurl);
+            }
+
+        } else {
+            Flyspray::show_error(L('codenotsent'));
+            break;
+        }
+
+        break;
+
+        // ##################
+        // new user self-registration with a confirmation code
+        // ##################
+    case 'register.registeruser':
         if (!$user->can_register()) {
             break;
         }
@@ -1031,20 +875,20 @@ switch ($action = Req::val('action'))
             break;
         }
 
-	if (strlen(Post::val('user_pass')) < MIN_PW_LENGTH) {
-            Flyspray::show_error(L('passwordtoosmall'));
-            break;
-        }
-
-        if ($fs->prefs['repeat_password'] && Post::val('user_pass') != Post::val('user_pass2')) {
+        if (Post::val('user_pass') != Post::val('user_pass2')) {
             Flyspray::show_error(L('nomatchpass'));
             break;
         }
 
+        if (strlen(Post::val('user_pass')) < MIN_PW_LENGTH) {
+            Flyspray::show_error(L('passwordtoosmall'));
+            break;
+        }
+
         // Check that the user entered the right confirmation code
-        $sql = $db->query("SELECT * FROM {registrations} WHERE magic_url = ?",
+        $sql = $db->Query("SELECT * FROM {registrations} WHERE magic_url = ?",
                 array(Post::val('magic_url')));
-        $reg_details = $db->fetchRow($sql);
+        $reg_details = $db->FetchRow($sql);
 
         if ($reg_details['confirm_code'] != trim(Post::val('confirmation_code'))) {
             Flyspray::show_error(L('confirmwrong'));
@@ -1054,8 +898,8 @@ switch ($action = Req::val('action'))
         $profile_image = 'profile_image';
         $image_path = '';
 
-        if (isset($_FILES[$profile_image])) {
-            if (!empty($_FILES[$profile_image]['name'])) {
+        if(isset($_FILES[$profile_image])) {
+            if(!empty($_FILES[$profile_image]['name'])) {
                 $allowed = array('jpg', 'jpeg', 'gif', 'png');
 
                 $image_name = $_FILES[$profile_image]['name'];
@@ -1086,268 +930,241 @@ switch ($action = Req::val('action'))
             break;
         }
 
-        $db->query('DELETE FROM {registrations} WHERE magic_url = ? AND confirm_code = ?',
+        $db->Query('DELETE FROM {registrations} WHERE magic_url = ? AND confirm_code = ?',
                    array(Post::val('magic_url'), Post::val('confirmation_code')));
 
 
         $_SESSION['SUCCESS'] = L('accountcreated');
         // If everything is ok, add here a notify to both administrators and the user.
         // Otherwise, explain what wen wrong.
-
+        
         define('NO_DO', true);
         break;
 
-	/**
-	 * new user self-registration without a confirmation code
-	 */
-	case 'register.newuser':
-	case 'admin.newuser':
-		if (!($user->perms('is_admin') || $user->can_self_register())) {
-			break;
-		}
-
-		$captchaerrors=array();
-		if (!($user->perms('is_admin')) && $fs->prefs['captcha_securimage']) {
-			$image = new Securimage();
-			if (!Post::isAlnum('captcha_code') || !$image->check(Post::val('captcha_code'))) {
-				$captchaerrors['invalidsecurimage']=1;
-			}
-		}
-
-		if (!($user->perms('is_admin')) && $fs->prefs['captcha_recaptcha']) {
-			require_once 'class.recaptcha.php';
-			if (!recaptcha::verify()) {
-				$captchaerrors['invalidrecaptcha']=1;
-			}
-		}
-
-		# if both captchatypes are configured, maybe show the user which one or both failed.
-		if (count($captchaerrors)) {
-			$_SESSION['ERRORS']=$captchaerrors;
-			Flyspray::show_error(L('captchaerror'));
-			break;
-		}
-
-		if (!Post::val('user_name') || !Post::val('real_name') || !Post::val('email_address')) {
-			// If the form wasn't filled out correctly, show an error
-			Flyspray::show_error(L('registererror'));
-			break;
-		}
-
-		$email = strtolower(trim(Post::val('email_address')));
+        // ##################
+        // new user self-registration without a confirmation code
+        // ##################
+    case 'register.newuser':
+    case 'admin.newuser':
+        if (!($user->perms('is_admin') || $user->can_self_register())) {
+            break;
+        }
 		
-		if ($fs->prefs['repeat_emailaddress'] && $email != trim(Post::val('verify_email_address'))) {
-			Flyspray::show_error(L('emailverificationwrong'));
-			break;
-		}
-
-		// Check email format
-		if (!$email || !Flyspray::check_email($email)) {
-			Flyspray::show_error(L('novalidemail'));
-			break;
-		}
-
-		if (strlen(Post::val('user_pass')) && (strlen(Post::val('user_pass')) < MIN_PW_LENGTH)) {
-			Flyspray::show_error(L('passwordtoosmall'));
-			break;
-		}
-
-		if ($fs->prefs['repeat_password'] && Post::val('user_pass') != Post::val('user_pass2')) {
-			Flyspray::show_error(L('nomatchpass'));
-			break;
-		}
-
-		if ($user->perms('is_admin')) {
-			$group_in = Post::val('group_in');
-		} else {
-			$group_in = $fs->prefs['anon_group'];
-		}
-
-		if (!$user->perms('is_admin')) {
-			$sql = $db->query("SELECT COUNT(*) FROM {users} WHERE
-				jabber_id = ? AND jabber_id != ''
-				OR email_address = ? AND email_address != ''",
-			array(
-				Post::val('jabber_id'),
-				$email
-			));
-
-			if ($db->fetchOne($sql)) {
-				Flyspray::show_error(L('emailtaken'));
+		if (!($user->perms('is_admin')) && $fs->prefs['captcha_securimage']) {
+			$image = new Securimage(); 
+			if( !Post::isAlnum('captcha_code') || !$image->check(Post::val('captcha_code'))) {
+				# wrong code
+				Flyspray::show_error(L('captchaerror'));
 				break;
 			}
+			# captcha is OK
 		}
 
-		$enabled = 1;
-		if($user->need_admin_approval()) {
-			$enabled = 0;
-		}
-		$profile_image = 'profile_image';
-		$image_path = '';
+        if (!Post::val('user_name') || !Post::val('real_name') || !Post::val('email_address'))
+        {
+            // If the form wasn't filled out correctly, show an error
+            Flyspray::show_error(L('registererror'));
+            break;
+        }
 
-		if (isset($_FILES[$profile_image])) {
-			if (!empty($_FILES[$profile_image]['name'])) {
-				$allowed = array('jpg', 'jpeg', 'gif', 'png');
+        if (Post::val('email_address') != Post::val('verify_email_address'))
+        {
+            Flyspray::show_error(L('emailverificationwrong'));
+            break;
+        }
 
-				$image_name = $_FILES[$profile_image]['name'];
-				$explode = explode('.', $image_name);
-				$image_extn = strtolower(end($explode));
-				$image_temp = $_FILES[$profile_image]['tmp_name'];
+        // Check email format
+        if (!Post::val('email_address') || !Flyspray::check_email(Post::val('email_address')))
+        {
+            Flyspray::show_error(L('novalidemail'));
+            break;
+        }
 
-				if (in_array($image_extn, $allowed)) {
-					$avatar_name = substr(md5(time()), 0, 10).'.'.$image_extn;
-					$image_path = BASEDIR.'/avatars/'.$avatar_name;
-					move_uploaded_file($image_temp, $image_path);
-					resizeImage($avatar_name, $fs->prefs['max_avatar_size'], $fs->prefs['max_avatar_size']);
-				} else {
-					Flyspray::show_error(L('incorrectfiletype'));
-					break;
-				}
-			}
-		}
+        if (Post::val('user_pass') != Post::val('user_pass2')) {
+            Flyspray::show_error(L('nomatchpass'));
+            break;
+        }
 
-		if (!Backend::create_user(Post::val('user_name'), Post::val('user_pass'),
-			Post::val('real_name'), Post::val('jabber_id'),
-			$email, Post::num('notify_type'),
-			Post::num('time_zone'), $group_in, $enabled, '', '', $image_path)) {
-			Flyspray::show_error(L('usernametaken'));
-			break;
-		}
+        if (strlen(Post::val('user_pass')) && (strlen(Post::val('user_pass')) < MIN_PW_LENGTH)) {
+            Flyspray::show_error(L('passwordtoosmall'));
+            break;
+        }
 
-		$_SESSION['SUCCESS'] = L('newusercreated');
+        if ($user->perms('is_admin')) {
+            $group_in = Post::val('group_in');
+        } else {
+            $group_in = $fs->prefs['anon_group'];
+        }
 
-		if (!$user->perms('is_admin')) {
-			define('NO_DO', true);
-		}
-		break;
+        if(!$user->perms('is_admin')) {
+
+            $sql = $db->Query("SELECT COUNT(*) FROM {users} WHERE
+                           jabber_id = ? AND jabber_id != ''
+                           OR email_address = ? AND email_address != ''",
+            array(Post::val('jabber_id'), Post::val('email_address')));
+
+            if ($db->fetchOne($sql)) {
+                Flyspray::show_error(L('emailtaken'));
+                break;
+            }
+        }
+
+        $enabled = 1;
+        if($user->need_admin_approval()) $enabled = 0;
+
+        $profile_image = 'profile_image';
+        $image_path = '';
+
+        if(isset($_FILES[$profile_image])) {
+            if(!empty($_FILES[$profile_image]['name'])) {
+                $allowed = array('jpg', 'jpeg', 'gif', 'png');
+
+                $image_name = $_FILES[$profile_image]['name'];
+                $explode = explode('.', $image_name);
+                $image_extn = strtolower(end($explode));
+                $image_temp = $_FILES[$profile_image]['tmp_name'];
+
+                if(in_array($image_extn, $allowed)) {
+                    $avatar_name = substr(md5(time()), 0, 10).'.'.$image_extn;
+                    $image_path = BASEDIR.'/avatars/'.$avatar_name;
+                    move_uploaded_file($image_temp, $image_path);
+                	resizeImage($avatar_name, $fs->prefs['max_avatar_size'], $fs->prefs['max_avatar_size']);
+                } else {
+                    Flyspray::show_error(L('incorrectfiletype'));
+                    break;
+                }
+            }
+        }
+
+        if (!Backend::create_user(Post::val('user_name'), Post::val('user_pass'),
+            Post::val('real_name'), Post::val('jabber_id'),
+            Post::val('email_address'), Post::num('notify_type'),
+            Post::num('time_zone'), $group_in, $enabled, '', '', $image_path)) {
+            Flyspray::show_error(L('usernametaken'));
+            break;
+        }
+
+        $_SESSION['SUCCESS'] = L('newusercreated');
+
+        if (!$user->perms('is_admin')) {
+            define('NO_DO', true);
+        }
+        break;
+
 
         // ##################
         // Admin based bulk registration of users
         // ##################
-	case 'register.newuserbulk':
-	case 'admin.newuserbulk':
-		if (!($user->perms('is_admin'))) {
-			break;
-		}
-		$group_in = Post::val('group_in');
-		$error = '';
-		$success = '';
-		$noUsers = true;
+    case 'register.newuserbulk':
+    case 'admin.newuserbulk':
+        if (!($user->perms('is_admin')))
+            break;
 
-		// For each user in post, add them
-		for ($i = 0 ; $i < 10 ; $i++) {
-			$user_name = Post::val('user_name' . $i);
-			$real_name = Post::val('real_name' . $i);
-			$email_address = Post::val('email_address' . $i);
+        $group_in = Post::val('group_in');
+        $error = '';
+        $success = '';
+        $noUsers = true;
 
-			if ($user_name == '' || $real_name == '' || $email_address == '') {
-				continue;
-			} else {
-				$noUsers = false;
-			}
-			$enabled = 1;
+        // For each user in post, add them
+        for ($i = 0 ; $i < 10 ; $i++)
+        {
+            $user_name     = Post::val('user_name' . $i);
+            $real_name     = Post::val('real_name' . $i);
+            $email_address = Post::val('email_address' . $i);
 
-			// Avoid dups
-			$sql = $db->query("SELECT COUNT(*) FROM {users} WHERE email_address = ?",
-				array($email_address));
 
-			if ($db->fetchOne($sql)) {
-				$error .= "\n" . L('emailtakenbulk') . ": $email_address\n";
-				continue;
-			}
+            if( $user_name == '' || $real_name == '' || $email_address == '')
+                continue;
+            else
+                $noUsers = false;
 
-			if (!Backend::create_user(
-				$user_name,
-				Post::val('user_pass'),
-				$real_name,
-				'',
-				$email_address,
-				Post::num('notify_type'),
-				Post::num('time_zone'),
-				$group_in,
-				$enabled,
-				'',
-				'',
-				'')
-			) {
-				$error .= "\n" . L('usernametakenbulk') .": $user_name\n";
-				continue;
-			} else {
-				$success .= ' '.$user_name.' ';
-			}
-		}
+            $enabled = 1;
 
-		if ($error != '') {
-			Flyspray::show_error($error);
-		} else if ($noUsers == true) {
-			Flyspray::show_error(L('nouserstoadd'));
-		} else {
-			$_SESSION['SUCCESS'] = L('created').$success;
-			if (!$user->perms('is_admin')) {
-				define('NO_DO', true);
-			}
-		}
-		break;
+            // Avoid dups
+            $sql = $db->Query("SELECT COUNT(*) FROM {users} WHERE email_address = ?",
+                              array($email_address));
+
+            if ($db->fetchOne($sql))
+            {
+                $error .= "\n" . L('emailtakenbulk') . ": $email_address\n";
+                continue;
+            }
+
+            if (!Backend::create_user($user_name, Post::val('user_pass'),
+                $real_name, '',
+                $email_address,
+                Post::num('notify_type'),
+                Post::num('time_zone'), $group_in, $enabled, '', '', ''))
+            {
+                $error .= "\n" . L('usernametakenbulk') .": $user_name\n";
+                continue;
+            }
+            else
+                $success .= ' '.$user_name.' ';
+        }
+
+        if ($error != '')
+            Flyspray::show_error($error);
+        else if ( $noUsers == true)
+            Flyspray::show_error(L('nouserstoadd'));
+        else
+        {
+            $_SESSION['SUCCESS'] = L('created').$success;
+            if (!$user->perms('is_admin')) {
+                define('NO_DO', true);
+            }
+        }
+        break;
+
 
         // ##################
         // Bulk User Edit Form
         // ##################
-	case 'admin.editallusers':
+    case 'admin.editallusers':
 
-		if (!($user->perms('is_admin'))) {
-			break;
-		}
- 
-		if(isset($_POST['checkedUsers']) && is_array($_POST['checkedUsers'])) {
-			$userids= $_POST['checkedUsers'];
-		} else {
-			break;
-		}
+        if (!($user->perms('is_admin'))) {
+            break;
+        }
 
-		$users=array();
+        $users = Post::val('checkedUsers');
 
-		foreach ($userids as $uid) {
-			if( ctype_digit($uid) ) {
-				if( $user->id == $uid ){
-					Flyspray::show_error(L('nosuicide'));
-				} else{
-					$users[]=$uid;
-				}
-			} else{
-				Flyspray::show_error(L('invalidinput'));
-				break 2;
-			}
-		}
+        if (count($users) == 0)
+        {
+            Flyspray::show_error(L('nouserselected'));
+            break;
+        }
 
-		if (count($users) == 0){
-			Flyspray::show_error(L('nouserselected'));
-			break;
-		}
 
-		// Make array of users to modify
-		$ids = "(" . $users[0];
-		for ($i = 1 ; $i < count($users) ; $i++) {
-			$ids .= ", " . $users[$i];
-		}
-		$ids .= ")";
+        // Make array of users to modify
+        $ids = "(" . $users[0];
+        for ($i = 1 ; $i < count($users) ; $i++)
+        {
+            $ids .= ", " . $users[$i];
+        }
+        $ids .= ")";
 
-		// Grab the action
-		if (isset($_POST['enable'])) {
-			$sql = $db->query("UPDATE {users} SET account_enabled = 1 WHERE user_id IN $ids");
-		} else if (isset($_POST['disable'])) {
-			$sql = $db->query("UPDATE {users} SET account_enabled = 0 WHERE user_id IN $ids");
-		} else if (isset($_POST['delete'])) {
-			//$sql = $db->query("DELETE FROM {users} WHERE user_id IN $ids");
-			foreach ($users as $uid) {
-				Backend::delete_user($uid);
-			}
-		}
+        // Grab the action
+        if (isset($_POST['enable']))
+        {
+            $sql = $db->Query("UPDATE {users} SET account_enabled = 1 WHERE user_id IN $ids");
+        }
+        else if (isset($_POST['disable']))
+        {
+            $sql = $db->Query("UPDATE {users} SET account_enabled = 0 WHERE user_id IN $ids");
+        }
+        else if (isset($_POST['delete']))
+        {
+            //$sql = $db->Query("DELETE FROM {users} WHERE user_id IN $ids");
+            foreach ($users as $uid) {
+                Backend::delete_user($uid);
+            }
+        }
 
-		/** Show success message and exit
-		 * @todo show better success message: action - enabled, disabled deleted and how many users affected.
-		 */
-		$_SESSION['SUCCESS'] = L('usersupdated');
-		break;
+        // Show success message and exit
+        $_SESSION['SUCCESS'] = L('usersupdated');
+        break;
+
+
 
         // ##################
         //  adding a new group
@@ -1363,7 +1180,7 @@ switch ($action = Req::val('action'))
             break;
         } else {
             // Check to see if the group name is available
-            $sql = $db->query("SELECT  COUNT(*)
+            $sql = $db->Query("SELECT  COUNT(*)
                                  FROM  {groups}
                                 WHERE  group_name = ? AND project_id = ?",
             array(Post::val('group_name'), $proj->id));
@@ -1385,7 +1202,7 @@ switch ($action = Req::val('action'))
                 $params = array_map('Post_to0',$cols);
                 array_unshift($params, $proj->id);
 
-                $db->query("INSERT INTO  {groups} (project_id, ". join(',', $cols).")
+                $db->Query("INSERT INTO  {groups} (project_id, ". join(',', $cols).")
                                  VALUES  (". $db->fill_placeholders($cols, 1) . ')', $params);
 
                 $_SESSION['SUCCESS'] = L('newgroupadded');
@@ -1403,40 +1220,17 @@ switch ($action = Req::val('action'))
         }
 
 		$errors=array();
-
-		$settings = array('jabber_server', 'jabber_port', 'jabber_username', 'notify_registration',
+		
+        /* The following code has been modified to accomodate a default_message for "all project" */
+        $settings = array('jabber_server', 'jabber_port', 'jabber_username', 'notify_registration',
 		'jabber_password', 'anon_group', 'user_notify', 'admin_email', 'email_ssl', 'email_tls',
-		'lang_code', 'gravatars', 'hide_emails', 'spam_proof', 'default_project', 'default_entry',
-		'dateformat','dateformat_extended',
-		'jabber_ssl', 'anon_reg', 'global_theme', 'smtp_server', 'page_title',
+		'lang_code', 'gravatars', 'hide_emails', 'spam_proof', 'captcha_securimage', 'default_project', 'dateformat', 'jabber_ssl',
+		'dateformat_extended', 'anon_reg', 'global_theme', 'smtp_server', 'page_title',
 		'smtp_user', 'smtp_pass', 'funky_urls', 'reminder_daemon','cache_feeds', 'intro_message',
 		'disable_lostpw','disable_changepw','days_before_alert', 'emailNoHTML', 'need_approval', 'pages_welcome_msg',
 		'active_oauths', 'only_oauth_reg', 'enable_avatars', 'max_avatar_size', 'default_order_by',
 		'max_vote_per_day', 'votes_per_project', 'url_rewriting',
-		'custom_style', 'general_integration', 'footer_integration',
-		'repeat_password', 'repeat_emailaddress', 'massops', 'relnofollow');
-
-		if(!isset($fs->prefs['massops'])){
-			$db->query("INSERT INTO {prefs} (pref_name,pref_value) VALUES('massops',0)");
-                }
-		if(!isset($fs->prefs['relnofollow'])){
-                        $db->query("INSERT INTO {prefs} (pref_name,pref_value) VALUES('relnofollow',1)");
-                }
-
-		# candid for a plugin, so separate them for the future.
-		$settings[]='captcha_securimage';
-		if(!isset($fs->prefs['captcha_securimage'])){
-			$db->query("INSERT INTO {prefs} (pref_name,pref_value) VALUES('captcha_securimage',0)");
-		}
-
-		# candid for a plugin
-		$settings[]='captcha_recaptcha';
-		$settings[]='captcha_recaptcha_sitekey';
-		$settings[]='captcha_recaptcha_secret';
-		if(!isset($fs->prefs['captcha_recaptcha'])){
-			$db->query("INSERT INTO {prefs} (pref_name,pref_value) VALUES('captcha_recaptcha',0),('captcha_recaptcha_sitekey',''),('captcha_recaptcha_secret','')");
-		}
-
+		'custom_style', 'general_integration', 'footer_integration');
         if(Post::val('need_approval') == '1' && Post::val('spam_proof')){
             unset($_POST['spam_proof']); // if self register request admin to approve, disable spam_proof
         	// if you think different, modify functions in class.user.php directing different regiser tpl
@@ -1448,7 +1242,7 @@ switch ($action = Req::val('action'))
 		#	Flyspray::show_error(L('enablehtaccess'));
 		#	break;
 		#}
-
+		
 		# Make sure mod_rewrite is enabled by checking a env var defined as HTTP_MOD_REWRITE in the .htaccess .
 		# It is possible to be converted to REDIRECT_HTTP_MOD_REWRITE . It's sound weired, but that's the case here.
 		if ( !array_key_exists('HTTP_MOD_REWRITE', $_SERVER) && !array_key_exists('REDIRECT_HTTP_MOD_REWRITE' , $_SERVER) ) {
@@ -1468,10 +1262,10 @@ switch ($action = Req::val('action'))
 	} else{
 		$_POST['default_order_by']=$_POST['default_order_by'].' '.$_POST['default_order_by_dir'];
 	}
-
-
+	
+	
         foreach ($settings as $setting) {
-            $db->query('UPDATE {prefs} SET pref_value = ? WHERE pref_name = ?',
+            $db->Query('UPDATE {prefs} SET pref_value = ? WHERE pref_name = ?',
                     array(Post::val($setting, 0), $setting));
             // Update prefs for following scripts
             $fs->prefs[$setting] = Post::val($setting, 0);
@@ -1479,13 +1273,13 @@ switch ($action = Req::val('action'))
 
         // Process the list of groups into a format we can store
         $viscols = trim(Post::val('visible_columns'));
-        $db->query("UPDATE  {prefs} SET pref_value = ?
+        $db->Query("UPDATE  {prefs} SET pref_value = ?
                      WHERE  pref_name = 'visible_columns'",
         array($viscols));
         $fs->prefs['visible_columns'] = $viscols;
 
         $visfields = trim(Post::val('visible_fields'));
-        $db->query("UPDATE  {prefs} SET pref_value = ?
+        $db->Query("UPDATE  {prefs} SET pref_value = ?
                      WHERE  pref_name = 'visible_fields'",
         array($visfields));
         $fs->prefs['visible_fields'] = $visfields;
@@ -1500,11 +1294,11 @@ switch ($action = Req::val('action'))
 
 				if(in_array($logoextension, $allowedextensions)){
 					move_uploaded_file($_FILES['logo']['tmp_name'], './' . $logofilename);
-					$sql = $db->query("SELECT * FROM {prefs} WHERE pref_name='logo'");
+					$sql = $db->Query("SELECT * FROM {prefs} WHERE pref_name='logo'");
 					if(!$db->fetchOne($sql)){
-						$db->query("INSERT INTO {prefs} (pref_name) VALUES('logo')");
+						$db->Query("INSERT INTO {prefs} (pref_name) VALUES('logo')");
 					}
-					$db->query("UPDATE {prefs} SET pref_value = ? WHERE pref_name='logo'", $logofilename);
+					$db->Query("UPDATE {prefs} SET pref_value = ? WHERE pref_name='logo'", $logofilename);
 				} else{
 					$errors['invalidfileextension']=1;
 				}
@@ -1541,34 +1335,21 @@ switch ($action = Req::val('action'))
                     : 'id tasktype priority severity summary status dueversion progress';
 
 
-		// 3 per row for better overview
-		$db->query('
-			INSERT INTO {projects} (
-				project_title, theme_style, intro_message,
-				others_view, others_viewroadmap, anon_open,
-				project_is_active, visible_columns, visible_fields,
-				lang_code, notify_email, notify_jabber,
-				notify_reply, disp_intro, default_task 
-			)
-			VALUES (
-				?, ?, ?,
-				?, ?, ?,
-				1, ?, ?,
-				?, ?, ?, 
-				?, ?, ?
-			)',
-			array(
-				Post::val('project_title'), Post::val('theme_style'), Post::val('intro_message'),
-				Post::num('others_view', 0), Post::num('others_viewroadmap', 0), Post::num('anon_open', 0),
-				$viscols, $visfields,
-				Post::val('lang_code', 'en'), '', '',
-				'', Post::num('disp_intro'), ''
-			)
-        );
+        $db->Query('INSERT INTO  {projects}
+                                 ( project_title, theme_style, intro_message,
+                                   others_view, others_viewroadmap, anon_open, project_is_active,
+                                   visible_columns, visible_fields, lang_code, notify_email, notify_jabber, disp_intro)
+                         VALUES  (?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?, ?)',
+        array(Post::val('project_title'), Post::val('theme_style'),
+              Post::val('intro_message'), Post::num('others_view', 0), Post::num('others_viewroadmap', 0),
+              Post::num('anon_open', 0),  $viscols, $visfields,
+              Post::val('lang_code', 'en'), '', '',
+        Post::num('disp_intro')
+    ));
 
-        // $sql = $db->query('SELECT project_id FROM {projects} ORDER BY project_id DESC', false, 1);
+        // $sql = $db->Query('SELECT project_id FROM {projects} ORDER BY project_id DESC', false, 1);
         // $pid = $db->fetchOne($sql);
-        $pid = $db->insert_ID();
+        $pid = $db->Insert_ID();
 
         $cols = array( 'manage_project', 'view_tasks', 'open_new_tasks',
                 'modify_own_tasks', 'modify_all_tasks', 'view_comments',
@@ -1584,153 +1365,112 @@ switch ($action = Req::val('action'))
                 'Permission to do anything related to this project.',
                 intval($pid));
 
-        $db->query("INSERT INTO  {groups}
+        $db->Query("INSERT INTO  {groups}
                                  ( group_name, group_desc, project_id,
                                    ".join(',', $cols).")
                          VALUES  ( ". $db->fill_placeholders($cols, 3) .")", $args);
 
-        $db->query("INSERT INTO  {list_category}
+        $db->Query("INSERT INTO  {list_category}
                                  ( project_id, category_name,
                                    show_in_list, category_owner, lft, rgt)
                          VALUES  ( ?, ?, 1, 0, 1, 4)", array($pid, 'root'));
 
-        $db->query("INSERT INTO  {list_category}
+        $db->Query("INSERT INTO  {list_category}
                                  ( project_id, category_name,
                                    show_in_list, category_owner, lft, rgt )
                          VALUES  ( ?, ?, 1, 0, 2, 3)", array($pid, 'Backend / Core'));
 
-        $db->query("INSERT INTO  {list_os}
+        $db->Query("INSERT INTO  {list_os}
                                  ( project_id, os_name, list_position, show_in_list )
                          VALUES  (?, ?, 1, 1)", array($pid, 'All'));
 
-        $db->query("INSERT INTO  {list_version}
+        $db->Query("INSERT INTO  {list_version}
                                  ( project_id, version_name, list_position,
                                    show_in_list, version_tense )
                          VALUES  (?, ?, 1, 1, 2)", array($pid, '1.0'));
 
         $_SESSION['SUCCESS'] = L('projectcreated');
-        Flyspray::redirect(createURL('pm', 'prefs', $pid));
+        Flyspray::Redirect(CreateURL('pm', 'prefs', $pid));
         break;
 
-	// ##################
-	// updating project preferences
-	// ##################
-	case 'pm.updateproject':
-		if (!$user->perms('manage_project')) {
-			break;
-		}
+        // ##################
+        // updating project preferences
+        // ##################
+    case 'pm.updateproject':
+        if (!$user->perms('manage_project')) {
+            break;
+        }
 
-		if (Post::val('delete_project')) {
-			if (Backend::delete_project($proj->id, Post::val('move_to'))) {
-				$_SESSION['SUCCESS'] = L('projectdeleted');
-			} else {
-				$_SESSION['ERROR'] = L('projectnotdeleted');
-			}
+        if (Post::val('delete_project')) {
+            if (Backend::delete_project($proj->id, Post::val('move_to'))) {
+                $_SESSION['SUCCESS'] = L('projectdeleted');
+            } else {
+                $_SESSION['ERROR'] = L('projectnotdeleted');
+            }
 
-			if (Post::val('move_to')) {
-				Flyspray::redirect(createURL('pm', 'prefs', Post::val('move_to')));
-			} else {
-				Flyspray::redirect($baseurl);
-			}
-		}
+            if (Post::val('move_to')) {
+                Flyspray::Redirect(CreateURL('pm', 'prefs', Post::val('move_to')));
+            } else {
+                Flyspray::Redirect($baseurl);
+            }
+        }
 
-		if (!Post::val('project_title')) {
-			Flyspray::show_error(L('emptytitle'));
-			break;
-		}
+        if (!Post::val('project_title')) {
+            Flyspray::show_error(L('emptytitle'));
+            break;
+        }
 
-		$cols = array(
-			'project_title',
-			'theme_style',
-			'lang_code',
-			'default_task',
-			'default_entry',
-			'intro_message',
-			'notify_email',
-			'notify_jabber',
-			'notify_subject',
-			'notify_reply',
-			'feed_description',
-			'feed_img_url',
-			'default_due_version',
-			'use_effort_tracking',
-			'pages_intro_msg',
-			'estimated_effort_format',
-			'current_effort_done_format'
-		);
-		$args = array_map('Post_to0', $cols);
-		$cols = array_merge($cols, $ints = array(
-			'project_is_active',
-			'others_view',
-			'others_viewroadmap',
-			'anon_open',
-			'comment_closed',
-			'auto_assign',
-			'freetagging',
-			'use_tags',
-			'use_gantt',
-			'use_kanban'
-			)
-		);
-		$args = array_merge($args, array_map(array('Post', 'num'), $ints));
+        $cols = array( 'project_title', 'theme_style', 'lang_code', 'default_task', 'default_entry',
+                'intro_message', 'notify_email', 'notify_jabber', 'notify_subject', 'notify_reply',
+                'feed_description', 'feed_img_url','default_due_version','use_effort_tracking',
+                'pages_intro_msg', 'estimated_effort_format', 'current_effort_done_format');
+        $args = array_map('Post_to0', $cols);
+        $cols = array_merge($cols, $ints = array('project_is_active', 'others_view', 'others_viewroadmap', 'anon_open', 'comment_closed', 'auto_assign', 'freetagging'));
+        $args = array_merge($args, array_map(array('Post', 'num'), $ints));
+        $cols[] = 'notify_types';
+        $args[] = implode(' ', (array) Post::val('notify_types'));
+        $cols[] = 'last_updated';
+        $args[] = time();
+        $cols[] = 'disp_intro';
+        $args[] = Post::num('disp_intro');
+        $cols[] = 'default_cat_owner';
+        $args[] =  Flyspray::UserNameToId(Post::val('default_cat_owner'));
+        $cols[] = 'custom_style';
+        $args[] = Post::val('custom_style');
 
-		$cols[] = 'notify_types';
-		$notify_types = array();
-		if (isset($_POST['notify_types']) && is_array($_POST['notify_types'])) {
-			foreach ($_POST['notify_types'] as $notify_type_id) {
-				if (is_numeric($notify_type_id)) {
-					$notify_types[] = $notify_type_id;
-				}
-			}
-		}
-		$args[] = implode(' ', $notify_types);
-	
-		$cols[] = 'last_updated';
-		$args[] = time();
-		$cols[] = 'disp_intro';
-		$args[] = Post::num('disp_intro');
-		$cols[] = 'default_cat_owner';
-		$args[] = Flyspray::userNameToId(Post::val('default_cat_owner'));
-		$cols[] = 'custom_style';
-		$args[] = Post::val('custom_style');
+        // Convert to seconds.
+        if (Post::val('hours_per_manday')) {
+            $args[] = effort::EditStringToSeconds(Post::val('hours_per_manday'), $proj->prefs['hours_per_manday'], $proj->prefs['estimated_effort_format']);
+            $cols[] = 'hours_per_manday';
+        }
 
-		// Convert to seconds
-		if (Post::val('hours_per_manday')) {
-			$args[] = effort::editStringToSeconds(Post::val('hours_per_manday'), $proj->prefs['hours_per_manday'], $proj->prefs['estimated_effort_format']);
-			$cols[] = 'hours_per_manday';
-		}
+        # TODO validation
+        if( Post::val('default_order_by2') !=''){
+                $_POST['default_order_by']=$_POST['default_order_by'].' '.$_POST['default_order_by_dir'].', '.$_POST['default_order_by2'].' '.$_POST['default_order_by_dir2'];
+        } else{
+                $_POST['default_order_by']=$_POST['default_order_by'].' '.$_POST['default_order_by_dir'];
+        }
+        $cols[]='default_order_by';
+        $args[]= $_POST['default_order_by'];
 
-		# TODO validation
-		if (Post::val('default_order_by2') !='') {
-			$_POST['default_order_by']=$_POST['default_order_by'].' '.$_POST['default_order_by_dir'].', '.$_POST['default_order_by2'].' '.$_POST['default_order_by_dir2'];
-		} else {
-			$_POST['default_order_by']=$_POST['default_order_by'].' '.$_POST['default_order_by_dir'];
-		}
-		$cols[] = 'default_order_by';
-		$args[] = $_POST['default_order_by'];
+        $args[] = $proj->id;
 
-		$args[] = $proj->id;
+        $update = $db->Query("UPDATE  {projects}
+                                 SET  ".join('=?, ', $cols)."=?
+                               WHERE  project_id = ?", $args);
 
-		$update = $db->query("UPDATE {projects}
-			SET ".join('=?, ', $cols)."=?
-			WHERE project_id = ?",
-			$args);
+        $update = $db->Query('UPDATE {projects} SET visible_columns = ? WHERE project_id = ?',
+                             array(trim(Post::val('visible_columns')), $proj->id));
 
-		$update = $db->query('UPDATE {projects}
-			SET visible_columns = ?
-			WHERE project_id = ?',
-			array(trim(Post::val('visible_columns')), $proj->id));
+        $update = $db->Query('UPDATE {projects} SET visible_fields = ? WHERE project_id = ?',
+                             array(trim(Post::val('visible_fields')), $proj->id));
 
-		$update = $db->query('UPDATE {projects}
-			SET visible_fields = ?
-			WHERE project_id = ?',
-			array(trim(Post::val('visible_fields')), $proj->id));
+        // Update project prefs for following scripts
+        $proj = new Project($proj->id);
+        $_SESSION['SUCCESS'] = L('projectupdated');
+        Flyspray::Redirect(CreateURL('pm', 'prefs', $proj->id));
+        break;
 
-		// Update project prefs for following scripts
-		$proj = new Project($proj->id);
-		$_SESSION['SUCCESS'] = L('projectupdated');
-		Flyspray::redirect(createURL('pm', 'prefs', $proj->id));
-		break;
         // ##################
         // modifying user details/profile
         // ##################
@@ -1745,11 +1485,11 @@ switch ($action = Req::val('action'))
             }
             else {
                 // check that he is not the last user
-                $sql = $db->query('SELECT count(*) FROM {users}');
-                if ($db->fetchOne($sql) > 1) {
+                $sql = $db->Query('SELECT count(*) FROM {users}');
+                if ($db->FetchOne($sql) > 1) {
                     Backend::delete_user(Post::val('user_id'));
                     $_SESSION['SUCCESS'] = L('userdeleted');
-                    Flyspray::redirect(createURL('admin', 'groups'));
+                    Flyspray::Redirect(CreateURL('admin', 'groups'));
                 } else {
                     Flyspray::show_error(L('lastuser'));
                     break;
@@ -1772,14 +1512,6 @@ switch ($action = Req::val('action'))
                     break;
                 }
 
-                /**
-                 * 'project': User prefers using 'project language setting' instead of 'user language setting'. Project language itself has fallback to 'global language setting'.
-                 */
-                if (!preg_match('/^(project|[a-z]{2,3}(_[a-z]{2,3})?)$/', Post::val('lang_code', 'en'))) {
-                        Flyspray::show_error(L('invalidlanguagecode'));
-                        break;
-                }
-
                 # current CleanFS template skips oldpass input requirement for admin accounts: if someone is able to catch an admin session he could simply create another admin acc for example.
                 #if ( (!$user->perms('is_admin') || $user->id == Post::val('user_id')) && !Post::val('oldpass')
                 if ( !$user->perms('is_admin') && !Post::val('oldpass') && (Post::val('changepass') || Post::val('confirmpass')) ) {
@@ -1788,37 +1520,37 @@ switch ($action = Req::val('action'))
                 }
 
                 if ($user->infos['oauth_uid'] && Post::val('changepass')) {
-                    Flyspray::show_error(sprintf(L('oauthreqpass'), ucfirst($user->infos['oauth_provider'])));
+                    Flyspray::show_error(sprintf(L('oauthreqpass'), ucfirst($uesr->infos['oauth_provider'])));
                     break;
                 }
 
-                if (Post::val('changepass')) {
-                    if ($fs->prefs['repeat_password'] && Post::val('changepass') != Post::val('confirmpass')) {
+                if (Post::val('changepass') || Post::val('confirmpass')) {
+                    if (Post::val('changepass') != Post::val('confirmpass')) {
                         Flyspray::show_error(L('passnomatch'));
                         break;
                     }
-					if (Post::val('oldpass')) {
-						$sql = $db->query('SELECT user_pass FROM {users} WHERE user_id = ?', array(Post::val('user_id')));
-						$oldpass =  $db->fetchRow($sql);
+                    if (Post::val('oldpass')) {
+                        $sql = $db->Query('SELECT user_pass FROM {users} WHERE user_id = ?', array(Post::val('user_id')));
+                        $oldpass =  $db->FetchRow($sql);
 
-						$pwtest=false;
-						if(strlen($oldpass['user_pass'])==32){
-							$pwtest=hash_equals($oldpass['user_pass'], md5(Post::val('oldpass')));
-						}elseif(strlen($oldpass['user_pass'])==40){
-							$pwtest=hash_equals($oldpass['user_pass'], sha1(Post::val('oldpass')));
-						}elseif(strlen($oldpass['user_pass'])==128){
-							$pwtest=hash_equals($oldpass['user_pass'], hash('sha512',Post::val('oldpass')));
-						}else{
-							$pwtest=password_verify(Post::val('oldpass'), $oldpass['user_pass']);
-						}
+                        switch(strlen($oldpass['user_pass'])) {
+                            case '40':
+                                $cryptPass = sha1(Post::val('oldpass'));
+                            case '32':
+                                $cryptPass = md5(Post::val('oldpass'));
+                                break;
+                            default:
+                                $cryptPass = crypt(Post::val('oldpass'), $oldpass['user_pass']);
+                                break;
+                        }
 
-						if (!$pwtest){
-							Flyspray::show_error(L('oldpasswrong'));
-							break;
-						}
-					}
+                        if ($cryptPass != $oldpass['user_pass']){
+                            Flyspray::show_error(L('oldpasswrong'));
+                            break;
+                        }
+                    }
                     $new_hash = Flyspray::cryptPassword(Post::val('changepass'));
-                    $db->query('UPDATE {users} SET user_pass = ? WHERE user_id = ?',
+                    $db->Query('UPDATE {users} SET user_pass = ? WHERE user_id = ?',
                             array($new_hash, Post::val('user_id')));
 
                     // If the user is changing their password, better update their cookie hash
@@ -1832,7 +1564,7 @@ switch ($action = Req::val('action'))
                     Notifications::JabberRequestAuth(Post::val('jabber_id'));
                 }
 
-                $db->query('UPDATE {users}
+                $db->Query('UPDATE {users}
                        SET  real_name = ?, email_address = ?, notify_own = ?,
                             jabber_id = ?, notify_type = ?,
                             dateformat = ?, dateformat_extended = ?,
@@ -1862,8 +1594,8 @@ switch ($action = Req::val('action'))
                         $image_temp = $_FILES[$profile_image]['tmp_name'];
 
                         if(in_array($image_extn, $allowed)) {
-                            $sql = $db->query('SELECT profile_image FROM {users} WHERE user_id = ?', array(Post::val('user_id')));
-                            $avatar_oldname = $db->fetchRow($sql);
+                            $sql = $db->Query('SELECT profile_image FROM {users} WHERE user_id = ?', array(Post::val('user_id')));
+                            $avatar_oldname = $db->FetchRow($sql);
 
                             if (is_file(BASEDIR.'/avatars/'.$avatar_oldname['profile_image']))
                                 unlink(BASEDIR.'/avatars/'.$avatar_oldname['profile_image']);
@@ -1872,7 +1604,7 @@ switch ($action = Req::val('action'))
                             $image_path = BASEDIR.'/avatars/'.$avatar_name;
                             move_uploaded_file($image_temp, $image_path);
                         	resizeImage($avatar_name, $fs->prefs['max_avatar_size'], $fs->prefs['max_avatar_size']);
-                            $db->query('UPDATE {users} SET profile_image = ? WHERE user_id = ?',
+                            $db->Query('UPDATE {users} SET profile_image = ? WHERE user_id = ?',
                             	array($avatar_name, Post::num('user_id')));
                         } else {
                             Flyspray::show_error(L('incorrectfiletype'));
@@ -1890,9 +1622,9 @@ switch ($action = Req::val('action'))
                         break;
                     }
                 } else {
-                    $db->query('UPDATE {users} SET account_enabled = ?  WHERE user_id = ?',
+                    $db->Query('UPDATE {users} SET account_enabled = ?  WHERE user_id = ?',
                         array(Post::val('account_enabled', 0), Post::val('user_id')));
-                    $db->query('UPDATE {users_in_groups} SET group_id = ?
+                    $db->Query('UPDATE {users_in_groups} SET group_id = ?
                          WHERE group_id = ? AND user_id = ?',
                         array(Post::val('group_in'), Post::val('old_global_id'), Post::val('user_id')));
                 }
@@ -1901,21 +1633,21 @@ switch ($action = Req::val('action'))
             endif; // end non project group changes
 
         if ($user->perms('manage_project') && !is_null(Post::val('project_group_in')) && Post::val('project_group_in') != Post::val('old_group_id')) {
-            $db->query('DELETE FROM {users_in_groups} WHERE group_id = ? AND user_id = ?',
+            $db->Query('DELETE FROM {users_in_groups} WHERE group_id = ? AND user_id = ?',
                          array(Post::val('old_group_id'), Post::val('user_id')));
             if (Post::val('project_group_in')) {
-                $db->query('INSERT INTO {users_in_groups} (group_id, user_id) VALUES(?, ?)',
+                $db->Query('INSERT INTO {users_in_groups} (group_id, user_id) VALUES(?, ?)',
                            array(Post::val('project_group_in'), Post::val('user_id')));
             }
         }
 
         $_SESSION['SUCCESS'] = L('userupdated');
         if ($action === 'myprofile.edituser') {
-                Flyspray::redirect(createURL('myprofile'));
+                Flyspray::Redirect(CreateURL('myprofile'));
         } elseif ($action === 'admin.edituser' && Post::val('area') === 'users') {
-                Flyspray::redirect(createURL('edituser', Post::val('user_id')));
+                Flyspray::Redirect(CreateURL('edituser', Post::val('user_id')));
         } else {
-                Flyspray::redirect(createURL('user', Post::val('user_id')));
+                Flyspray::Redirect(CreateURL('user', Post::val('user_id')));
         }
         break;
         // ##################
@@ -1923,10 +1655,10 @@ switch ($action = Req::val('action'))
         // ##################
     case 'approve.user':
         if($user->perms('is_admin')) {
-            $db->query('UPDATE {users} SET account_enabled = ?  WHERE user_id = ?',
+            $db->Query('UPDATE {users} SET account_enabled = ?  WHERE user_id = ?',
                     array(1, Post::val('user_id')));
 
-            $db->query('UPDATE  {admin_requests}
+            $db->Query('UPDATE  {admin_requests}
                        SET  resolved_by = ?, time_resolved = ?
                      WHERE  submitted_by = ? AND request_type = ?',
             array($user->id, time(), Post::val('user_id'), 3));
@@ -1956,37 +1688,37 @@ switch ($action = Req::val('action'))
         if ($uid = Post::val('uid')) {
             $uids = preg_split('/[,;]+/', $uid, -1, PREG_SPLIT_NO_EMPTY);
             foreach ($uids as $uid) {
-                $uid = Flyspray::usernameToId($uid);
+                $uid = Flyspray::UserNameToId($uid);
                 if (!$uid) {
                     continue;
                 }
 
                 // If user is already a member of one of the project's groups, **move** (not add) him to the new group
-                $sql = $db->query('SELECT g.group_id
+                $sql = $db->Query('SELECT g.group_id
                                      FROM {users_in_groups} uig, {groups} g
                                     WHERE g.group_id = uig.group_id AND uig.user_id = ? AND project_id = ?',
                 array($uid, $proj->id));
-                if ($db->countRows($sql)) {
-                    $oldid = $db->fetchOne($sql);
-                    $db->query('UPDATE {users_in_groups} SET group_id = ? WHERE user_id = ? AND group_id = ?',
+                if ($db->CountRows($sql)) {
+                    $oldid = $db->FetchOne($sql);
+                    $db->Query('UPDATE {users_in_groups} SET group_id = ? WHERE user_id = ? AND group_id = ?',
                                 array(Post::val('group_id'), $uid, $oldid));
                 } else {
-                    $db->query('INSERT INTO {users_in_groups} (group_id, user_id) VALUES(?, ?)',
+                    $db->Query('INSERT INTO {users_in_groups} (group_id, user_id) VALUES(?, ?)',
                                 array(Post::val('group_id'), $uid));
                 }
             }
         }
 
         if (Post::val('delete_group') && Post::val('group_id') != '1') {
-            $db->query('DELETE FROM {groups} WHERE group_id = ?', Post::val('group_id'));
+            $db->Query('DELETE FROM {groups} WHERE group_id = ?', Post::val('group_id'));
 
             if (Post::val('move_to')) {
-                $db->query('UPDATE {users_in_groups} SET group_id = ? WHERE group_id = ?',
+                $db->Query('UPDATE {users_in_groups} SET group_id = ? WHERE group_id = ?',
                             array(Post::val('move_to'), Post::val('group_id')));
             }
 
             $_SESSION['SUCCESS'] = L('groupupdated');
-            Flyspray::redirect(createURL( (($proj->id) ? 'pm' : 'admin'), 'groups', $proj->id));
+            Flyspray::Redirect(CreateURL( (($proj->id) ? 'pm' : 'admin'), 'groups', $proj->id));
         }
         // Allow all groups to update permissions except for global Admin
         if (Post::val('group_id') != '1') {
@@ -2006,130 +1738,73 @@ switch ($action = Req::val('action'))
         $args[] = Post::val('group_id');
         $args[] = $proj->id;
 
-        $db->query("UPDATE  {groups}
+        $db->Query("UPDATE  {groups}
                        SET  ".join('=?,', $cols)."=?
                      WHERE  group_id = ? AND project_id = ?", $args);
 
         $_SESSION['SUCCESS'] = L('groupupdated');
         break;
 
-	/**
-	 * updating a list
-	 */
-	case 'update_list':
-		if (!$user->perms('manage_project') || !isset($list_table_name)) {
-			break;
-		}
+        // ##################
+        // updating a list
+        // ##################
+    case 'update_list':
+        if (!$user->perms('manage_project') || !isset($list_table_name)) {
+            break;
+        }
 
-		if (isset($_POST['list_name']) && is_array($_POST['list_name'])) {
-			$listnames = array_filter($_POST['list_name'], function($val, $key) { return (is_int($key) && is_string($val));}, ARRAY_FILTER_USE_BOTH);
-		} else {
-			break;
-		}
-
-		if (isset($_POST['list_position']) && is_array($_POST['list_position'])) {
-			$listposition = array_filter($_POST['list_position'], function($val, $key) { return (is_int($key) && is_numeric($val));}, ARRAY_FILTER_USE_BOTH);
-		} else {
-			$listposition = array();
-		}
-
-		if (isset($_POST['show_in_list']) && is_array($_POST['show_in_list'])) {
-			$listshow = array_filter($_POST['show_in_list'], function($val, $key) { return (is_int($key) && is_numeric($val));}, ARRAY_FILTER_USE_BOTH);
-		} else {
-			$listshow = array();
-		}
-
-		if (isset($_POST['delete']) && is_array($_POST['delete'])) {
-			$listdelete = array_filter($_POST['delete'], function($val, $key) { return (is_int($key) && is_numeric($val));}, ARRAY_FILTER_USE_BOTH);
-		} else {
-			$listdelete = array();
-		}
-
-		if ($lt === 'tag') {
-			if (isset($_POST['list_class']) && is_array($_POST['list_class'])) {
-				$listclass = array_filter($_POST['list_class'], function($val, $key) { return (is_int($key) && is_string($val));}, ARRAY_FILTER_USE_BOTH);
-			} else {
-				$listclass = array();
+        $listnames    = Post::val('list_name');
+        $listposition = Post::val('list_position');
+        $listshow     = Post::val('show_in_list');
+        $listdelete   = Post::val('delete');
+        if($lt=='tag'){
+                $listclass = Post::val('list_class');
+        }
+	foreach ($listnames as $id => $listname) {
+        	if ($listname != '') {
+			if (!isset($listshow[$id])) {
+				$listshow[$id] = 0;
 			}
-		}
 
-		if ($lt === 'version') {
-			if (isset($_POST['version_tense']) && is_array($_POST['version_tense'])) {
-				$listtense = array_filter($_POST['version_tense'], function($val, $key) { return (is_int($key) && is_string($val));}, ARRAY_FILTER_USE_BOTH);
-			} else {
-				$listtense = array();
+			$check = $db->Query("SELECT COUNT(*)
+                                       FROM $list_table_name
+                                      WHERE (project_id = 0 OR project_id = ?)
+                                        AND $list_column_name = ?
+                                        AND $list_id <> ?",
+                                    array($proj->id, $listnames[$id], $id)
+			);
+			$itemexists = $db->FetchOne($check);
+
+			if ($itemexists) {
+				Flyspray::show_error(sprintf(L('itemexists'), $listnames[$id]));
+				return;
 			}
-		}
 
-		$updated = 0;
-		$deleted = 0;
-		foreach ($listnames as $id => $listname) {
-			if ($listname != '') {
-				# fallback position for entry if wasn't valid
-				if (!isset($listposition[$id])) {
-					$listposition[$id] = 1;
-				}
-				if (!isset($listshow[$id])) {
-					$listshow[$id] = 0;
-				}
-
-				$check = $db->query("SELECT COUNT(*)
-					FROM $list_table_name
-					WHERE (project_id = 0 OR project_id = ?)
-					AND $list_column_name = ?
-					AND $list_id <> ?",
-					array($proj->id, $listnames[$id], $id)
+			if($lt=='tag'){
+				$update = $db->Query("UPDATE $list_table_name
+					SET $list_column_name=?, list_position=?, show_in_list=?, class=?
+					WHERE $list_id=? AND project_id=?",
+					array($listnames[$id], intval($listposition[$id]), intval($listshow[$id]), $listclass[$id], $id, $proj->id)
 				);
-				$itemexists = $db->fetchOne($check);
-
-				if ($itemexists) {
-					Flyspray::show_error(sprintf(L('itemexists'), $listnames[$id]));
-					# TODO maybe show count of updated entries before this name collision occured ..
-					return;
-				}
-
-				if ($lt === 'tag'){
-					# skip updating an entry if no valid class string submitted
-					if (isset($listclass[$id])) {
-						$update = $db->query("UPDATE $list_table_name
-						SET $list_column_name=?, list_position=?, show_in_list=?, class=?
-						WHERE $list_id=? AND project_id=?",
-						array($listnames[$id], intval($listposition[$id]), intval($listshow[$id]), $listclass[$id], $id, $proj->id)
-						);
-						$updated += $db->affectedRows();
-					}
-				} elseif ($lt === 'version') {
-					# skip updating an entry if no valid tense submitted
-					if (isset($listtense[$id])) {
-						$update = $db->query("UPDATE $list_table_name
-						SET $list_column_name=?, list_position=?, show_in_list=?, version_tense=?
-						WHERE $list_id = ? AND project_id = ?",
-						array($listnames[$id], intval($listposition[$id]), intval($listshow[$id]), intval($listtense[$id]), $id, $proj->id)
-						);
-						$updated += $db->affectedRows();
-					}
-				} else {
-					$update = $db->query("UPDATE $list_table_name
-						SET $list_column_name=?, list_position=?, show_in_list=?
-						WHERE $list_id=? AND project_id=?",
-						array($listnames[$id], intval($listposition[$id]), intval($listshow[$id]), $id, $proj->id)
-					);
-					$updated += $db->affectedRows();
-				}
-			} else {
-				Flyspray::show_error(L('fieldsmissing'));
+			} else{
+				$update = $db->Query("UPDATE $list_table_name
+					SET $list_column_name=?, list_position=?, show_in_list=?
+					WHERE $list_id=? AND project_id=?",
+					array($listnames[$id], intval($listposition[$id]), intval($listshow[$id]), $id, $proj->id)
+				);
 			}
+		} else {
+			Flyspray::show_error(L('fieldsmissing'));
 		}
+	}
 
-		if (is_array($listdelete) && count($listdelete)) {
-			$deleteids = "$list_id = " . join(" OR $list_id =", array_map('intval', array_keys($listdelete)));
-			$db->query("DELETE FROM $list_table_name WHERE project_id = ? AND ($deleteids)", array($proj->id));
-			$deleted = $db->affectedRows();
-		}
+        if (is_array($listdelete) && count($listdelete)) {
+            $deleteids = "$list_id = " . join(" OR $list_id =", array_map('intval', array_keys($listdelete)));
+            $db->Query("DELETE FROM $list_table_name WHERE project_id = ? AND ($deleteids)", array($proj->id));
+        }
 
-		# TODO tell user $updated and $deleted count
-		$_SESSION['SUCCESS'] = L('listupdated');
-		break;
+        $_SESSION['SUCCESS'] = L('listupdated');
+        break;
 
         // ##################
         // adding a list item
@@ -2147,30 +1822,82 @@ switch ($action = Req::val('action'))
 
         $position = Post::num('list_position');
         if (!$position) {
-            $position = intval($db->fetchOne($db->query("SELECT max(list_position)+1
+            $position = intval($db->FetchOne($db->Query("SELECT max(list_position)+1
                                                     FROM $list_table_name
                                                    WHERE project_id = ?",
             array($proj->id))));
         }
 
-        $check = $db->query("SELECT COUNT(*)
+        $check = $db->Query("SELECT COUNT(*)
                                FROM $list_table_name
                               WHERE (project_id = 0 OR project_id = ?)
                                 AND $list_column_name = ?",
                             array($proj->id, Post::val('list_name')));
-        $itemexists = $db->fetchOne($check);
+        $itemexists = $db->FetchOne($check);
 
         if ($itemexists) {
             Flyspray::show_error(sprintf(L('itemexists'), Post::val('list_name')));
             return;
         }
 
-        $db->query("INSERT INTO  $list_table_name
+        $db->Query("INSERT INTO  $list_table_name
                                  (project_id, $list_column_name, list_position, show_in_list)
                          VALUES  (?, ?, ?, ?)",
         array($proj->id, Post::val('list_name'), $position, '1'));
 
         $_SESSION['SUCCESS'] = L('listitemadded');
+        break;
+
+        // ##################
+        // updating the version list
+        // ##################
+    case 'update_version_list':
+        if (!$user->perms('manage_project') || !isset($list_table_name)) {
+            break;
+        }
+
+        $listnames    = Post::val('list_name');
+        $listposition = Post::val('list_position');
+        $listshow     = Post::val('show_in_list');
+        $listtense    = Post::val('version_tense');
+        $listdelete   = Post::val('delete');
+
+        foreach ($listnames as $id => $listname) {
+            if (is_numeric($listposition[$id]) && $listnames[$id] != '') {
+                if (!isset($listshow[$id])) {
+                    $listshow[$id] = 0;
+                }
+
+                $check = $db->Query("SELECT COUNT(*)
+                                       FROM $list_table_name
+                                      WHERE (project_id = 0 OR project_id = ?)
+                                        AND $list_column_name = ?
+                                        AND $list_id <> ?",
+                                    array($proj->id, $listnames[$id], $id));
+                $itemexists = $db->FetchOne($check);
+
+                if ($itemexists) {
+                    Flyspray::show_error(sprintf(L('itemexists'), $listnames[$id]));
+                    return;
+                }
+
+                $update = $db->Query("UPDATE  $list_table_name
+                                         SET  $list_column_name = ?, list_position = ?,
+                                              show_in_list = ?, version_tense = ?
+                                       WHERE  $list_id = ? AND project_id = ?",
+                array($listnames[$id], intval($listposition[$id]),
+                    intval($listshow[$id]), intval($listtense[$id]), $id, $proj->id));
+            } else {
+                Flyspray::show_error(L('fieldsmissing'));
+            }
+        }
+
+        if (is_array($listdelete) && count($listdelete)) {
+            $deleteids = "$list_id = " . join(" OR $list_id =", array_map('intval', array_keys($listdelete)));
+            $db->Query("DELETE FROM $list_table_name WHERE project_id = ? AND ($deleteids)", array($proj->id));
+        }
+
+        $_SESSION['SUCCESS'] = L('listupdated');
         break;
 
         // ##################
@@ -2189,25 +1916,25 @@ switch ($action = Req::val('action'))
 
         $position = Post::num('list_position');
         if (!$position) {
-            $position = $db->fetchOne($db->query("SELECT max(list_position)+1
+            $position = $db->FetchOne($db->Query("SELECT max(list_position)+1
                                                     FROM $list_table_name
                                                    WHERE project_id = ?",
             array($proj->id)));
         }
 
-        $check = $db->query("SELECT COUNT(*)
+        $check = $db->Query("SELECT COUNT(*)
                                FROM $list_table_name
                               WHERE (project_id = 0 OR project_id = ?)
                                 AND $list_column_name = ?",
                             array($proj->id, Post::val('list_name')));
-        $itemexists = $db->fetchOne($check);
+        $itemexists = $db->FetchOne($check);
 
         if ($itemexists) {
             Flyspray::show_error(sprintf(L('itemexists'), Post::val('list_name')));
             return;
         }
 
-        $db->query("INSERT INTO  $list_table_name
+        $db->Query("INSERT INTO  $list_table_name
                                 (project_id, $list_column_name, list_position, show_in_list, version_tense)
                         VALUES  (?, ?, ?, ?, ?)",
         array($proj->id, Post::val('list_name'),
@@ -2216,164 +1943,83 @@ switch ($action = Req::val('action'))
         $_SESSION['SUCCESS'] = L('listitemadded');
         break;
 
-	/**
-	 * updating the category list
-	 */
-	case 'update_category':
-		if (!$user->perms('manage_project')) {
-			break;
-		}
+        // ##################
+        // updating the category list
+        // ##################
+    case 'update_category':
+        if (!$user->perms('manage_project')) {
+            break;
+        }
 
-		# 'Nested Set' structure updates relies on correctly sent tree structure from client.
-		# Netherless we should check before any sql update done.
-		if (isset($_POST['list_name']) && is_array($_POST['list_name'])) {
-			foreach ($_POST['list_name'] as $key => $val) {
-				if (!is_int($key)) {
-					break 2;
-				};
-				if (!is_string($val)) {
-					break 2;
-				};
-				if (!isset($_POST['lft'][$key]) || !isset($_POST['rgt'][$key])) {
-					break 2;
-				}
-				if (!is_numeric($_POST['lft'][$key]) || !is_numeric($_POST['rgt'][$key])) {
-					break 2;
-				}
-			}
-			$listnames = $_POST['list_name'];
-			$listlft = $_POST['lft'];
-			$listrgt = $_POST['rgt'];
-		} else {
-			break;
-		}
+        $listnames    = Post::val('list_name');
+        $listshow     = Post::val('show_in_list');
+        $listdelete   = Post::val('delete');
+        $listlft      = Post::val('lft');
+        $listrgt      = Post::val('rgt');
+        $listowners   = Post::val('category_owner');
 
-		if (isset($_POST['show_in_list']) && is_array($_POST['show_in_list'])) {
-			$listshow = array_filter($_POST['show_in_list'], function($val, $key) { return (is_int($key) && is_numeric($val));}, ARRAY_FILTER_USE_BOTH);
-		} else {
-			$listshow = array();
-		}
+        foreach ($listnames as $id => $listname) {
+            if ($listname != '') {
+                if (!isset($listshow[$id])) {
+                    $listshow[$id] = 0;
+                }
 
-		if (isset($_POST['delete']) && is_array($_POST['delete'])) {
-			$listdelete = array_filter($_POST['delete'], function($val, $key) { return (is_int($key) && is_numeric($val));}, ARRAY_FILTER_USE_BOTH);
-		} else {
-			$listdelete = array();
-		}
+                // Check for duplicates on the same sub-level under same parent category.
+                // First, we'll have to find the right parent for the current category.
+                $sql = $db->Query('SELECT *
+                                     FROM {list_category}
+                                    WHERE project_id = ? AND lft < ? and rgt > ?
+                                      AND lft = (SELECT MAX(lft) FROM {list_category} WHERE lft < ? and rgt > ?)',
+                                  array($proj->id, intval($listlft[$id]), intval($listrgt[$id]), intval($listlft[$id]), intval($listrgt[$id])));
 
-		if (isset($_POST['category_owner']) && is_array($_POST['category_owner'])) {
-			$listowners = array_filter($_POST['category_owner'], function($val, $key) { return (is_int($key) && is_string($val));}, ARRAY_FILTER_USE_BOTH);
-		} else {
-			$listowners = array();
-		}
+                $parent = $db->FetchRow($sql);
 
-		foreach ($listnames as $id => $listname) {
-			if ($listname != '') {
-				if (!isset($listshow[$id])) {
-					$listshow[$id] = 0;
-				}
+                $check = $db->Query('SELECT COUNT(*)
+                                      FROM {list_category} c
+                                     WHERE project_id = ? AND category_name = ? AND lft > ? AND rgt < ?
+                                       AND category_id <> ?
+                            AND NOT EXISTS (SELECT *
+                                              FROM {list_category}
+                                             WHERE project_id = ?
+                                               AND lft > ? AND rgt < ?
+                                               AND lft < c.lft AND rgt > c.rgt)',
+                                array($proj->id, $listname, $parent['lft'], $parent['rgt'], intval($id), $proj->id, $parent['lft'], $parent['rgt']));
+                $itemexists = $db->FetchOne($check);
 
-				// Check for duplicates on the same sub-level under same parent category.
-				// First, we'll have to find the right parent for the current category.
-				$sql = $db->query('
-					SELECT *
-					FROM {list_category}
-					WHERE project_id = ?
-					AND lft < ?
-					AND rgt > ?
-					AND lft = (
-						SELECT MAX(lft)
-						FROM {list_category}
-						WHERE lft < ?
-						AND rgt > ?
-					)',
-					array(
-						$proj->id,
-						intval($listlft[$id]),
-						intval($listrgt[$id]),
-						intval($listlft[$id]),
-						intval($listrgt[$id])
-					)
-				);
-				$parent = $db->fetchRow($sql);
+                // echo "<pre>" . $parent['category_name'] . "," . $listname . ", " . intval($id) . ", " . intval($listlft[$id]) . ", " . intval($listrgt[$id]) . ", " . $itemexists ."</pre>";
 
-				$check = $db->query('
-					SELECT COUNT(*)
-					FROM {list_category} c
-					WHERE project_id = ?
-					AND category_name = ?
-					AND lft > ?
-					AND rgt < ?
-					AND category_id <> ?
-					AND NOT EXISTS (
-						SELECT *
-						FROM {list_category}
-						WHERE project_id = ?
-						AND lft > ?
-						AND rgt < ?
-						AND lft < c.lft
-						AND rgt > c.rgt
-					)',
-					array(
-						$proj->id,
-						$listname,
-						$parent['lft'],
-						$parent['rgt'],
-						intval($id),
-						$proj->id,
-						$parent['lft'],
-						$parent['rgt']
-					)
-				);
-				$itemexists = $db->fetchOne($check);
+                if ($itemexists) {
+                    Flyspray::show_error(sprintf(L('categoryitemexists'), $listname, $parent['category_name']));
+                    return;
+                }
 
-				#echo "<pre>" . $parent['category_name'] . "," . $listname . ", " . intval($id) . ", " . intval($listlft[$id]) . ", " . intval($listrgt[$id]) . ", " . $itemexists ."</pre>";
 
-				if ($itemexists) {
-					Flyspray::show_error(sprintf(L('categoryitemexists'), $listname, $parent['category_name']));
-					return;
-				}
+                $update = $db->Query('UPDATE  {list_category}
+                                         SET  category_name = ?,
+                                              show_in_list = ?, category_owner = ?,
+                                              lft = ?, rgt = ?
+                                       WHERE  category_id = ? AND project_id = ?',
+                array($listname, intval($listshow[$id]), Flyspray::UserNameToId($listowners[$id]), intval($listlft[$id]), intval($listrgt[$id]), intval($id), $proj->id));
+                // Correct visibility for sub categories
+                if ($listshow[$id] == 0) {
+                    foreach ($listnames as $key => $value) {
+                        if ($listlft[$key] > $listlft[$id] && $listrgt[$key] < $listrgt[$id]) {
+                            $listshow[$key] = 0;
+                        }
+                    }
+                }
+            } else {
+                Flyspray::show_error(L('fieldsmissing'));
+            }
+        }
 
-				$update = $db->query('
-					UPDATE {list_category}
-					SET
-						category_name = ?,
-						show_in_list = ?,
-						category_owner = ?,
-						lft = ?,
-						rgt = ?
-					WHERE category_id = ?
-					AND project_id = ?',
-					array(
-						$listname,
-						intval($listshow[$id]),
-						Flyspray::userNameToId($listowners[$id]),
-						intval($listlft[$id]),
-						intval($listrgt[$id]),
-						intval($id),
-						$proj->id
-					)
-				);
+        if (is_array($listdelete) && count($listdelete)) {
+            $deleteids = "$list_id = " . join(" OR $list_id =", array_map('intval', array_keys($listdelete)));
+            $db->Query("DELETE FROM {list_category} WHERE project_id = ? AND ($deleteids)", array($proj->id));
+        }
 
-				// Correct visibility for sub categories
-				if ($listshow[$id] == 0) {
-					foreach ($listnames as $key => $value) {
-						if ($listlft[$key] > $listlft[$id] && $listrgt[$key] < $listrgt[$id]) {
-							$listshow[$key] = 0;
-						}
-					}
-				}
-			} else {
-				Flyspray::show_error(L('fieldsmissing'));
-			}
-		}
-
-		if (is_array($listdelete) && count($listdelete)) {
-			$deleteids = "$list_id = " . join(" OR $list_id =", array_map('intval', array_keys($listdelete)));
-			$db->query("DELETE FROM {list_category} WHERE project_id = ? AND ($deleteids)", array($proj->id));
-		}
-
-		$_SESSION['SUCCESS'] = L('listupdated');
-		break;
+        $_SESSION['SUCCESS'] = L('listupdated');
+        break;
 
         // ##################
         // adding a category list item
@@ -2391,8 +2037,8 @@ switch ($action = Req::val('action'))
 
         // Get right value of last node
         // Need also left value of parent for duplicate check and category name for errormessage.
-        $sql = $db->query('SELECT rgt, lft, category_name FROM {list_category} WHERE category_id = ?', array(Post::val('parent_id', -1)));
-        $parent = $db->fetchRow($sql);
+        $sql = $db->Query('SELECT rgt, lft, category_name FROM {list_category} WHERE category_id = ?', array(Post::val('parent_id', -1)));
+        $parent = $db->FetchRow($sql);
         $right = $parent['rgt'];
         $left = $parent['lft'];
 
@@ -2401,7 +2047,7 @@ switch ($action = Req::val('action'))
         // If parent has subcategories, check for possible duplicates
         // on the same sub-level and under the same parent.
         if ($left + 1 != $right) {
-            $check = $db->query('SELECT COUNT(*)
+            $check = $db->Query('SELECT COUNT(*)
                                   FROM {list_category} c
                                  WHERE project_id = ? AND category_name = ? AND lft > ? AND rgt < ?
                         AND NOT EXISTS (SELECT *
@@ -2410,7 +2056,7 @@ switch ($action = Req::val('action'))
                                            AND lft > ? AND rgt < ?
                                            AND lft < c.lft AND rgt > c.rgt)',
                                 array($proj->id, Post::val('list_name'), $left, $right, $proj->id, $left, $right));
-            $itemexists = $db->fetchOne($check);
+            $itemexists = $db->FetchOne($check);
 
             if ($itemexists) {
                 Flyspray::show_error(sprintf(L('categoryitemexists'), Post::val('list_name'), $parent['category_name']));
@@ -2418,14 +2064,14 @@ switch ($action = Req::val('action'))
             }
         }
 
-        $db->query('UPDATE {list_category} SET rgt=rgt+2 WHERE rgt >= ? AND project_id = ?', array($right, $proj->id));
-        $db->query('UPDATE {list_category} SET lft=lft+2 WHERE lft >= ? AND project_id = ?', array($right, $proj->id));
+        $db->Query('UPDATE {list_category} SET rgt=rgt+2 WHERE rgt >= ? AND project_id = ?', array($right, $proj->id));
+        $db->Query('UPDATE {list_category} SET lft=lft+2 WHERE lft >= ? AND project_id = ?', array($right, $proj->id));
 
-        $db->query("INSERT INTO  {list_category}
+        $db->Query("INSERT INTO  {list_category}
                                  ( project_id, category_name, show_in_list, category_owner, lft, rgt )
                          VALUES  (?, ?, 1, ?, ?, ?)",
         array($proj->id, Post::val('list_name'),
-              Post::val('category_owner', 0) == '' ? '0' : Flyspray::usernameToId(Post::val('category_owner', 0)), $right, $right+1));
+              Post::val('category_owner', 0) == '' ? '0' : Flyspray::UserNameToId(Post::val('category_owner', 0)), $right, $right+1));
 
         $_SESSION['SUCCESS'] = L('listitemadded');
         break;
@@ -2442,23 +2088,23 @@ switch ($action = Req::val('action'))
         // if the user has not the permission to view all tasks, check if the task
         // is in tasks allowed to see, otherwise tell that the task does not exist.
         if (!$user->perms('view_tasks')) {
-            $taskcheck = Flyspray::getTaskDetails(Post::val('related_task'));
+            $taskcheck = Flyspray::GetTaskDetails(Post::val('related_task'));
             if (!$user->can_view_task($taskcheck)) {
                 Flyspray::show_error(L('relatedinvalid'));
                 break;
             }
         }
 
-        $sql = $db->query('SELECT  project_id
+        $sql = $db->Query('SELECT  project_id
                              FROM  {tasks}
                             WHERE  task_id = ?',
         array(Post::val('related_task')));
-        if (!$db->countRows($sql)) {
+        if (!$db->CountRows($sql)) {
             Flyspray::show_error(L('relatedinvalid'));
             break;
         }
 
-        $sql = $db->query("SELECT related_id
+        $sql = $db->Query("SELECT related_id
                              FROM {related}
                             WHERE this_task = ? AND related_task = ?
                                   OR
@@ -2466,17 +2112,17 @@ switch ($action = Req::val('action'))
         array($task['task_id'], Post::val('related_task'),
               $task['task_id'], Post::val('related_task')));
 
-        if ($db->countRows($sql)) {
+        if ($db->CountRows($sql)) {
             Flyspray::show_error(L('relatederror'));
             break;
         }
 
-        $db->query("INSERT INTO {related} (this_task, related_task) VALUES(?,?)",
+        $db->Query("INSERT INTO {related} (this_task, related_task) VALUES(?,?)",
                 array($task['task_id'], Post::val('related_task')));
 
         Flyspray::logEvent($task['task_id'], 11, Post::val('related_task'));
         Flyspray::logEvent(Post::val('related_task'), 15, $task['task_id']);
-        $notify->create(NOTIFY_REL_ADDED, $task['task_id'], Post::val('related_task'), null, NOTIFY_BOTH, $proj->prefs['lang_code']);
+        $notify->Create(NOTIFY_REL_ADDED, $task['task_id'], Post::val('related_task'), null, NOTIFY_BOTH, $proj->prefs['lang_code']);
 
         $_SESSION['SUCCESS'] = L('relatedaddedmsg');
         break;
@@ -2495,12 +2141,12 @@ switch ($action = Req::val('action'))
         }
 
         foreach (Post::val('related_id') as $related) {
-            $sql = $db->query('SELECT this_task, related_task FROM {related} WHERE related_id = ?',
+            $sql = $db->Query('SELECT this_task, related_task FROM {related} WHERE related_id = ?',
                               array($related));
-            $db->query('DELETE FROM {related} WHERE related_id = ? AND (this_task = ? OR related_task = ?)',
+            $db->Query('DELETE FROM {related} WHERE related_id = ? AND (this_task = ? OR related_task = ?)',
                         array($related, $task['task_id'], $task['task_id']));
-            if ($db->affectedRows()) {
-                $related_task = $db->fetchRow($sql);
+            if ($db->AffectedRows()) {
+                $related_task = $db->FetchRow($sql);
                 $related_task = ($related_task['this_task'] == $task['task_id']) ? $related_task['related_task'] : $task['task_id'];
                 Flyspray::logEvent($task['task_id'], 12, $related_task);
                 Flyspray::logEvent($related_task, 16, $task['task_id']);
@@ -2517,7 +2163,7 @@ switch ($action = Req::val('action'))
         if (Req::val('user_id')) {
             $userId = Req::val('user_id');
         } else {
-            $userId = Flyspray::usernameToId(Req::val('user_name'));
+            $userId = Flyspray::UserNameToId(Req::val('user_name'));
         }
         if (!Backend::add_notification($userId, Req::val('ids'))) {
             Flyspray::show_error(L('couldnotaddusernotif'));
@@ -2527,7 +2173,7 @@ switch ($action = Req::val('action'))
         // TODO: Log event in a later version.
 
         $_SESSION['SUCCESS'] = L('notifyadded');
-        Flyspray::redirect(createURL('details', $task['task_id']).'#notify');
+        Flyspray::Redirect(CreateURL('details', $task['task_id']).'#notify');
         break;
 
         // ##################
@@ -2541,61 +2187,51 @@ switch ($action = Req::val('action'))
         $_SESSION['SUCCESS'] = L('notifyremoved');
         # if on details page we should redirect to details with a GET
         # but what if the request comes from another page (like myprofile for instance maybe in future)
-        Flyspray::redirect(createURL('details', $task['task_id']).'#notify');
+        Flyspray::Redirect(CreateURL('details', $task['task_id']).'#notify');
         break;
 
         // ##################
         // editing a comment
         // ##################
-	case 'editcomment':
-		if (!($user->perms('edit_comments') || $user->perms('edit_own_comments'))) {
-			break;
-		}
+    case 'editcomment':
+        if (!($user->perms('edit_comments') || $user->perms('edit_own_comments'))) {
+            break;
+        }
 
-		$where = '';
+        $where = '';
 
 		$comment_text=Post::val('comment_text');
 		$previous_text=Post::val('previous_text');
-
+		
 		# dokuwiki syntax plugin filters on output
-		if ($conf['general']['syntax_plugin'] != 'dokuwiki') {
+		if($conf['general']['syntax_plugin'] != 'dokuwiki'){
 			$purifierconfig = HTMLPurifier_Config::createDefault();
-			$purifierconfig->set('CSS.AllowedProperties', array());
-			if ($fs->prefs['relnofollow']) {
-				$purifierconfig->set('HTML.Nofollow', true);
-			}
 			$purifier = new HTMLPurifier($purifierconfig);
 			$comment_text = $purifier->purify($comment_text);
 			$previous_text= $purifier->purify($comment_text);
 		}
 
 		$params = array($comment_text, time(), Post::val('comment_id'), $task['task_id']);
+ 
+        if ($user->perms('edit_own_comments') && !$user->perms('edit_comments')) {
+            $where = ' AND user_id = ?';
+            array_push($params, $user->id);
+        }
 
-		if ($user->perms('edit_own_comments') && !$user->perms('edit_comments')) {
-			$where = ' AND user_id = ?';
-			array_push($params, $user->id);
-		}
+        $db->Query("UPDATE  {comments}
+                       SET  comment_text = ?, last_edited_time = ?
+                     WHERE  comment_id = ? AND task_id = ? $where", $params);
+        $db->Query("DELETE FROM {cache} WHERE  topic = ? AND type = ?", array(Post::val('comment_id'), 'comm'));
 
-		$db->query("UPDATE {comments}
-			SET comment_text = ?, last_edited_time = ?
-			WHERE comment_id = ?
-			AND task_id = ?
-			$where", $params);
-		$db->query("DELETE FROM {cache} WHERE  topic = ? AND type = ?", array(Post::val('comment_id'), 'comm'));
+        Flyspray::logEvent($task['task_id'], 5, $comment_text, $previous_text, Post::val('comment_id'));
 
-		Flyspray::logEvent($task['task_id'], 5, $comment_text, $previous_text, Post::val('comment_id'));
+        Backend::upload_files($task['task_id'], Post::val('comment_id'));
+        Backend::delete_files(Post::val('delete_att'));
+        Backend::upload_links($task['task_id'], Post::val('comment_id'));
+        Backend::delete_links(Post::val('delete_link'));
 
-		Backend::upload_files($task['task_id'], Post::val('comment_id'));
-		if (isset($_POST['delete_att']) && is_array($_POST['delete_att'])) {
-			Backend::delete_files($_POST['delete_att']);
-		}
-		Backend::upload_links($task['task_id'], Post::val('comment_id'));
-		if (isset($_POST['delete_link']) && is_array($_POST['delete_link'])) {
-			Backend::delete_links($_POST['delete_link']);
-		}
-
-		$_SESSION['SUCCESS'] = L('editcommentsaved');
-		break;
+        $_SESSION['SUCCESS'] = L('editcommentsaved');
+        break;
 
         // ##################
         // deleting a comment
@@ -2605,34 +2241,33 @@ switch ($action = Req::val('action'))
             break;
         }
 
-        $result = $db->query('SELECT task_id, comment_text, user_id, date_added
-                                FROM {comments}
-                               WHERE comment_id = ?',
-        array(Post::val('comment_id')));
-        $comment = $db->fetchRow($result);
+        $result = $db->Query('SELECT  task_id, comment_text, user_id, date_added
+                                FROM  {comments}
+                               WHERE  comment_id = ?',
+        array(Get::val('comment_id')));
+        $comment = $db->FetchRow($result);
 
         // Check for files attached to this comment
-        $check_attachments = $db->query('SELECT  *
+        $check_attachments = $db->Query('SELECT  *
                                            FROM  {attachments}
                                           WHERE  comment_id = ?',
-        array(Post::val('comment_id')));
+        array(Req::val('comment_id')));
 
-        if ($db->countRows($check_attachments) && !$user->perms('delete_attachments')) {
+        if ($db->CountRows($check_attachments) && !$user->perms('delete_attachments')) {
             Flyspray::show_error(L('commentattachperms'));
             break;
         }
 
-        $db->query("DELETE FROM {comments} WHERE comment_id = ? AND task_id = ?",
-                   array(Post::val('comment_id'), $task['task_id']));
+        $db->Query("DELETE FROM {comments} WHERE comment_id = ? AND task_id = ?",
+                   array(Req::val('comment_id'), $task['task_id']));
 
-        if ($db->affectedRows()) {
-		# uses history.new_value for storing deleted comment creator user_id
-		# uses history.field_changed for storing deleted comment date_added
-		Flyspray::logEvent($task['task_id'], 6, $comment['user_id'], $comment['comment_text'], $comment['date_added']);
+        if ($db->AffectedRows()) {
+            Flyspray::logEvent($task['task_id'], 6, $comment['user_id'],
+                    $comment['comment_text'], '', $comment['date_added']);
         }
 
-        while ($attachment = $db->fetchRow($check_attachments)) {
-            $db->query("DELETE from {attachments} WHERE attachment_id = ?",
+        while ($attachment = $db->FetchRow($check_attachments)) {
+            $db->Query("DELETE from {attachments} WHERE attachment_id = ?",
                     array($attachment['attachment_id']));
 
             @unlink(BASEDIR .'/attachments/' . $attachment['file_name']);
@@ -2647,98 +2282,51 @@ switch ($action = Req::val('action'))
         // adding a reminder
         // ##################
     case 'details.addreminder':
+        $how_often  = Post::val('timeamount1', 1) * Post::val('timetype1');
+        $start_time = Flyspray::strtotime(Post::val('timeamount2', 0));
 
-	$errors = array();
-	// TODO Naming of the vars of this form is terrible, fix in later (1.1?) version.
+        $userId = Flyspray::UsernameToId(Post::val('to_user_id'));
+        if (!Backend::add_reminder($task['task_id'], Post::val('reminder_message'), $how_often, $start_time, $userId)) {
+            Flyspray::show_error(L('usernotexist'));
+            break;
+        }
 
-	// repeats
-	if (!is_string($_POST['timeamount1']) or intval($_POST['timeamount1'])<1) {
-		$errors['addreminder_minimalrepeaterror'] = 1;
-	}
+        // TODO: Log event in a later version.
 
-	// at least 1 hour (3600sec) minimal interval submitted
-	if (!is_string($_POST['timetype1']) or intval($_POST['timetype1'])<3600) {
-		$errors['addreminder_minimalintervalerror'] = 1;
-	}
+        $_SESSION['SUCCESS'] = L('reminderaddedmsg');
+        break;
 
-	// startdate
-	if (!is_string($_POST['timeamount2'])) {
-		$errors['addreminder_starterror'] = 1;
-	}
-
-	if (!is_string($_POST['to_user_id'])) {
-		$errors['addreminder_datetimeerror'] = 1;
-	}
-
-	if (count($errors)>0) {
-		$_SESSION['ERRORS'] = $errors; # $_SESSION['ERROR'] is very limited, holds only one string and often just overwritten
-		$_SESSION['ERROR'] = L('invalidinput');
-		# pro and contra http 303 redirect here:
-		# - good: browser back button works, browser history.
-		# -  bad: form inputs of user not preserved (at the moment). Annoying if user wrote a long description and then the form submit gets denied because of other reasons.
-		#Flyspray::redirect(createURL('details', $task['task_id']));
-		break;
-	}
-
-	$to_user_id = Flyspray::usernameToId(Post::val('to_user_id'));
-	$start_time = Flyspray::strtotime(Post::val('timeamount2', 0));
-	$how_often = intval(Post::val('timeamount1', 1)) * Post::val('timetype1');
-
-	if (!Backend::add_reminder($task['task_id'], Post::val('reminder_message'), $how_often, $start_time, $to_user_id)) {
-		Flyspray::show_error(L('usernotexist'));
-		break;
-	}
-
-	// log event is written by Backend::add_reminder()
-	$_SESSION['SUCCESS'] = L('reminderaddedmsg');
-	// Do we need to jump to the reminder tab/anchor #remind on task detail page? error and success messages are shown currently at the top. (may change)
-	// redirect on success after POST so browser backbutton works.
-	Flyspray::redirect(createURL('details', $task['task_id']));
-	break;
-	
         // ##################
         // removing a reminder
         // ##################
     case 'deletereminder':
-        if (!$user->perms('manage_project') || !is_array($_POST['reminder_id'])) {
+        if (!$user->perms('manage_project') || !is_array(Post::val('reminder_id'))) {
             break;
         }
 
-		$errors = 0;
-		foreach ($_POST['reminder_id'] as $reminder_id) {
-			if (!is_string($reminder_id) or !is_numeric($reminder_id) or $reminder_id<1) {
-				$errors++;
-			}
-		}
+        foreach (Post::val('reminder_id') as $reminder_id) {
+            $sql = $db->Query('SELECT to_user_id FROM {reminders} WHERE reminder_id = ?',
+                              array($reminder_id));
+            $reminder = $db->fetchOne($sql);
+            $db->Query('DELETE FROM {reminders} WHERE reminder_id = ? AND task_id = ?',
+                       array($reminder_id, $task['task_id']));
+            if ($db && $db->affectedRows()) {
+                Flyspray::logEvent($task['task_id'], 18, $reminder);
+            }
+        }
 
-		if ($errors > 0) {
-			$_SESSION['ERROR'] = L('invalidinput');
-			break;
-		}
-
-		foreach ($_POST['reminder_id'] as $reminder_id) {
-			$sql = $db->query('SELECT to_user_id FROM {reminders} WHERE reminder_id = ?',
-				array($reminder_id));
-			$reminder = $db->fetchOne($sql);
-			$db->query('DELETE FROM {reminders} WHERE reminder_id = ? AND task_id = ?',
-				array($reminder_id, $task['task_id']));
-			if ($db && $db->affectedRows()) {
-				Flyspray::logEvent($task['task_id'], 18, $reminder);
-			}
-		}
-
-		$_SESSION['SUCCESS'] = L('reminderdeletedmsg');
-		break;
+        $_SESSION['SUCCESS'] = L('reminderdeletedmsg');
+        break;
 
         // ##################
         // change a bunch of users' groups
         // ##################
     case 'movetogroup':
         // Check that both groups belong to the same project
-        $sql = $db->query('SELECT project_id FROM {groups} WHERE group_id = ? OR group_id = ?',
+        $sql = $db->Query('SELECT project_id FROM {groups} WHERE group_id = ? OR group_id = ?',
                           array(Post::val('switch_to_group'), Post::val('old_group')));
-        $old_pr = $db->fetchOne($sql);
-        $new_pr = $db->fetchOne($sql);
+        $old_pr = $db->FetchOne($sql);
+        $new_pr = $db->FetchOne($sql);
         if ($proj->id != $old_pr || ($new_pr && $new_pr != $proj->id)) {
             break;
         }
@@ -2750,31 +2338,31 @@ switch ($action = Req::val('action'))
 	foreach (Post::val('users') as $user_id => $val) {
                 if($user->id!=$user_id || $proj->id!=0){
 			if (Post::val('switch_to_group') == '0') {
-				$db->query('DELETE FROM {users_in_groups} WHERE user_id=? AND group_id=?',
+				$db->Query('DELETE FROM {users_in_groups} WHERE user_id=? AND group_id=?',
 					array($user_id, Post::val('old_group'))
 				);
 			} else {
 				# special case: user exists in multiple global groups (shouldn't, but happened)
 				# avoids duplicate entry error
 				if($old_pr==0){
-					$sql = $db->query('SELECT group_id FROM {users_in_groups} WHERE user_id = ? AND group_id = ?',
+					$sql = $db->Query('SELECT group_id FROM {users_in_groups} WHERE user_id = ? AND group_id = ?',
 						array($user_id, Post::val('switch_to_group'))
 					);
-					$uigexists = $db->fetchOne($sql);
+					$uigexists = $db->FetchOne($sql);
 					if($uigexists > 0){
-						$db->query('DELETE FROM {users_in_groups} WHERE user_id=? AND group_id=?',
+						$db->Query('DELETE FROM {users_in_groups} WHERE user_id=? AND group_id=?',
 							array($user_id, Post::val('old_group'))
 						);
 					}
 				}
 
-				$db->query('UPDATE {users_in_groups} SET group_id=? WHERE user_id=? AND group_id=?',
+				$db->Query('UPDATE {users_in_groups} SET group_id=? WHERE user_id=? AND group_id=?',
 					array(Post::val('switch_to_group'), $user_id, Post::val('old_group'))
 				);
 			}
 		} else {
 			Flyspray::show_error(L('nosuicide'));
-		}
+		}	
 	}
 
         // TODO: Log event in a later version.
@@ -2810,16 +2398,16 @@ switch ($action = Req::val('action'))
     case 'requestclose':
     case 'requestreopen':
         if ($action == 'requestclose') {
-            Flyspray::adminRequest(1, $proj->id, $task['task_id'], $user->id, Post::val('reason_given'));
+            Flyspray::AdminRequest(1, $proj->id, $task['task_id'], $user->id, Post::val('reason_given'));
             Flyspray::logEvent($task['task_id'], 20, Post::val('reason_given'));
         } elseif ($action == 'requestreopen') {
-            Flyspray::adminRequest(2, $proj->id, $task['task_id'], $user->id, Post::val('reason_given'));
+            Flyspray::AdminRequest(2, $proj->id, $task['task_id'], $user->id, Post::val('reason_given'));
             Flyspray::logEvent($task['task_id'], 21, Post::val('reason_given'));
             Backend::add_notification($user->id, $task['task_id']);
         }
 
         // Now, get the project managers' details for this project
-        $sql = $db->query("SELECT  u.user_id
+        $sql = $db->Query("SELECT  u.user_id
                              FROM  {users} u
                         LEFT JOIN  {users_in_groups} uig ON u.user_id = uig.user_id
                         LEFT JOIN  {groups} g ON uig.group_id = g.group_id
@@ -2829,7 +2417,7 @@ switch ($action = Req::val('action'))
         $pms = $db->fetchCol($sql);
         if (count($pms)) {
             // Call the functions to create the address arrays, and send notifications
-        $notify->create(NOTIFY_PM_REQUEST, $task['task_id'], null, $notify->specificAddresses($pms), NOTIFY_BOTH, $proj->prefs['lang_code']);
+        $notify->Create(NOTIFY_PM_REQUEST, $task['task_id'], null, $notify->SpecificAddresses($pms), NOTIFY_BOTH, $proj->prefs['lang_code']);
         }
 
         $_SESSION['SUCCESS'] = L('adminrequestmade');
@@ -2839,24 +2427,24 @@ switch ($action = Req::val('action'))
         // denying a PM request
         // ##################
     case 'denypmreq':
-        $result = $db->query("SELECT  task_id, project_id
+        $result = $db->Query("SELECT  task_id, project_id
                                 FROM  {admin_requests}
                                WHERE  request_id = ?",
         array(Req::val('req_id')));
-        $req_details = $db->fetchRow($result);
+        $req_details = $db->FetchRow($result);
 
         if (!$user->perms('manage_project', $req_details['project_id'])) {
             break;
         }
 
         // Mark the PM request as 'resolved'
-        $db->query("UPDATE  {admin_requests}
+        $db->Query("UPDATE  {admin_requests}
                        SET  resolved_by = ?, time_resolved = ?, deny_reason = ?
                      WHERE  request_id = ?",
         array($user->id, time(), Req::val('deny_reason'), Req::val('req_id')));
 
         Flyspray::logEvent($req_details['task_id'], 28, Req::val('deny_reason'));
-        $notify->create(NOTIFY_PM_DENY_REQUEST, $req_details['task_id'], Req::val('deny_reason'), null, NOTIFY_BOTH, $proj->prefs['lang_code']);
+        $notify->Create(NOTIFY_PM_DENY_REQUEST, $req_details['task_id'], Req::val('deny_reason'), null, NOTIFY_BOTH, $proj->prefs['lang_code']);
 
         $_SESSION['SUCCESS'] = L('pmreqdeniedmsg');
         break;
@@ -2866,7 +2454,7 @@ switch ($action = Req::val('action'))
         // ##################
     case 'denyuserreq':
         if($user->perms('is_admin')) {
-            $db->query("UPDATE  {admin_requests}
+            $db->Query("UPDATE  {admin_requests}
                        SET  resolved_by = ?, time_resolved = ?, deny_reason = ?
                      WHERE  request_id = ?",
             array($user->id, time(), Req::val('deny_reason'), Req::val('req_id')));
@@ -2900,7 +2488,7 @@ switch ($action = Req::val('action'))
         // if the user has not the permission to view all tasks, check if the task
         // is in tasks allowed to see, otherwise tell that the task does not exist.
         if (!$user->perms('view_tasks')) {
-            $taskcheck = Flyspray::getTaskDetails(Post::val('dep_task_id'));
+            $taskcheck = Flyspray::GetTaskDetails(Post::val('dep_task_id'));
             if (!$user->can_view_task($taskcheck)) {
                 Flyspray::show_error(L('dependaddfailed'));
                 break;
@@ -2908,17 +2496,17 @@ switch ($action = Req::val('action'))
         }
 
         // First check that the user hasn't tried to add this twice
-        $sql1 = $db->query('SELECT  COUNT(*) FROM {dependencies}
+        $sql1 = $db->Query('SELECT  COUNT(*) FROM {dependencies}
                              WHERE  task_id = ? AND dep_task_id = ?',
         array($task['task_id'], Post::val('dep_task_id')));
 
         // or that they are trying to reverse-depend the same task, creating a mutual-block
-        $sql2 = $db->query('SELECT  COUNT(*) FROM {dependencies}
+        $sql2 = $db->Query('SELECT  COUNT(*) FROM {dependencies}
                              WHERE  task_id = ? AND dep_task_id = ?',
         array(Post::val('dep_task_id'), $task['task_id']));
 
         // Check that the dependency actually exists!
-        $sql3 = $db->query('SELECT COUNT(*) FROM {tasks} WHERE task_id = ?',
+        $sql3 = $db->Query('SELECT COUNT(*) FROM {tasks} WHERE task_id = ?',
                 array(Post::val('dep_task_id')));
 
         if ($db->fetchOne($sql1) || $db->fetchOne($sql2) || !$db->fetchOne($sql3)
@@ -2928,14 +2516,14 @@ switch ($action = Req::val('action'))
             Flyspray::show_error(L('dependaddfailed'));
             break;
         }
-        $notify->create(NOTIFY_DEP_ADDED, $task['task_id'], Post::val('dep_task_id'), null, NOTIFY_BOTH, $proj->prefs['lang_code']);
-        $notify->create(NOTIFY_REV_DEP, Post::val('dep_task_id'), $task['task_id'], null, NOTIFY_BOTH, $proj->prefs['lang_code']);
+        $notify->Create(NOTIFY_DEP_ADDED, $task['task_id'], Post::val('dep_task_id'), null, NOTIFY_BOTH, $proj->prefs['lang_code']);
+        $notify->Create(NOTIFY_REV_DEP, Post::val('dep_task_id'), $task['task_id'], null, NOTIFY_BOTH, $proj->prefs['lang_code']);
 
         // Log this event to the task history, both ways
         Flyspray::logEvent($task['task_id'], 22, Post::val('dep_task_id'));
         Flyspray::logEvent(Post::val('dep_task_id'), 23, $task['task_id']);
 
-        $db->query('INSERT INTO  {dependencies} (task_id, dep_task_id)
+        $db->Query('INSERT INTO  {dependencies} (task_id, dep_task_id)
                          VALUES  (?,?)',
         array($task['task_id'], Post::val('dep_task_id')));
 
@@ -2954,7 +2542,7 @@ switch ($action = Req::val('action'))
         }
 
         //set the subtask supertask_id to 0 removing parent child relationship
-        $db->query("UPDATE {tasks} SET supertask_id=0 WHERE task_id = ?",
+        $db->Query("UPDATE {tasks} SET supertask_id=0 WHERE task_id = ?",
                    array(Post::val('subtaskid')));
 
         //write event log
@@ -2962,7 +2550,7 @@ switch ($action = Req::val('action'))
         //post success message to the user
         $_SESSION['SUCCESS'] = L('subtaskremovedmsg');
         //redirect the user back to the right task
-        Flyspray::redirect(createURL('details', Get::val('task_id')));
+        Flyspray::Redirect(CreateURL('details', Get::val('task_id')));
         break;
 
         // ##################
@@ -2974,17 +2562,17 @@ switch ($action = Req::val('action'))
             break;
         }
 
-        $result = $db->query('SELECT  * FROM {dependencies}
+        $result = $db->Query('SELECT  * FROM {dependencies}
                                WHERE  depend_id = ?',
         array(Post::val('depend_id')));
-        $dep_info = $db->fetchRow($result);
+        $dep_info = $db->FetchRow($result);
 
-        $db->query('DELETE FROM {dependencies} WHERE depend_id = ? AND task_id = ?',
+        $db->Query('DELETE FROM {dependencies} WHERE depend_id = ? AND task_id = ?',
                     array(Post::val('depend_id'), $task['task_id']));
 
-        if ($db->affectedRows()) {
-            $notify->create(NOTIFY_DEP_REMOVED, $dep_info['task_id'], $dep_info['dep_task_id'], null, NOTIFY_BOTH, $proj->prefs['lang_code']);
-            $notify->create(NOTIFY_REV_DEP_REMOVED, $dep_info['dep_task_id'], $dep_info['task_id'], null, NOTIFY_BOTH, $proj->prefs['lang_code']);
+        if ($db->AffectedRows()) {
+            $notify->Create(NOTIFY_DEP_REMOVED, $dep_info['task_id'], $dep_info['dep_task_id'], null, NOTIFY_BOTH, $proj->prefs['lang_code']);
+            $notify->Create(NOTIFY_REV_DEP_REMOVED, $dep_info['dep_task_id'], $dep_info['task_id'], null, NOTIFY_BOTH, $proj->prefs['lang_code']);
 
             Flyspray::logEvent($dep_info['task_id'], 24, $dep_info['dep_task_id']);
             Flyspray::logEvent($dep_info['dep_task_id'], 25, $dep_info['task_id']);
@@ -2995,7 +2583,7 @@ switch ($action = Req::val('action'))
         }
 
         //redirect the user back to the right task
-        Flyspray::redirect(createURL('details', Post::val('return_task_id')));
+        Flyspray::Redirect(CreateURL('details', Post::val('return_task_id')));
         break;
 
         // ##################
@@ -3003,20 +2591,20 @@ switch ($action = Req::val('action'))
         // ##################
     case 'lostpw.sendmagic':
         // Check that the username exists
-        $sql = $db->query('SELECT * FROM {users} WHERE user_name = ?',
+        $sql = $db->Query('SELECT * FROM {users} WHERE user_name = ?',
                           array(Post::val('user_name')));
 
         // If the username doesn't exist, throw an error
-        if (!$db->countRows($sql)) {
+        if (!$db->CountRows($sql)) {
             Flyspray::show_error(L('usernotexist'));
             break;
         }
 
-        $user_details = $db->fetchRow($sql);
+        $user_details = $db->FetchRow($sql);
 
         if ($user_details['oauth_provider']) {
             Flyspray::show_error(sprintf(L('oauthreqpass'), ucfirst($user_details['oauth_provider'])));
-            Flyspray::redirect($baseurl);
+            Flyspray::Redirect($baseurl);
             break;
         }
 
@@ -3027,13 +2615,13 @@ switch ($action = Req::val('action'))
 
 
         // Insert the random "magic url" into the user's profile
-        $db->query('UPDATE {users}
+        $db->Query('UPDATE {users}
                        SET magic_url = ?
                      WHERE user_id = ?',
         array($magic_url, $user_details['user_id']));
 
         if(count($user_details)) {
-            $notify->create(NOTIFY_PW_CHANGE, null, array($baseurl, $magic_url), $notify->specificAddresses(array($user_details['user_id']), NOTIFY_EMAIL));
+            $notify->Create(NOTIFY_PW_CHANGE, null, array($baseurl, $magic_url), $notify->SpecificAddresses(array($user_details['user_id']), NOTIFY_EMAIL));
         }
 
         // TODO: Log event in a later version.
@@ -3051,20 +2639,20 @@ switch ($action = Req::val('action'))
             break;
         }
 
-        if ($fs->prefs['repeat_password'] && Post::val('pass1') != Post::val('pass2')) {
+        if (Post::val('pass1') != Post::val('pass2')) {
             Flyspray::show_error(L('passnomatch'));
             break;
         }
 
         $new_pass_hash = Flyspray::cryptPassword(Post::val('pass1'));
-        $db->query("UPDATE  {users} SET user_pass = ?, magic_url = ''
+        $db->Query("UPDATE  {users} SET user_pass = ?, magic_url = ''
                      WHERE  magic_url = ?",
         array($new_pass_hash, Post::val('magic_url')));
 
         // TODO: Log event in a later version.
 
         $_SESSION['SUCCESS'] = L('passchanged');
-        Flyspray::redirect($baseurl);
+        Flyspray::Redirect($baseurl);
         break;
 
         // ##################
@@ -3078,7 +2666,7 @@ switch ($action = Req::val('action'))
             break;
         }
 
-        $db->query('UPDATE  {tasks}
+        $db->Query('UPDATE  {tasks}
                        SET  mark_private = 1
                      WHERE  task_id = ?', array($task['task_id']));
 
@@ -3095,7 +2683,7 @@ switch ($action = Req::val('action'))
             break;
         }
 
-        $db->query('UPDATE  {tasks}
+        $db->Query('UPDATE  {tasks}
                        SET  mark_private = 0
                      WHERE  task_id = ?', array($task['task_id']));
 
@@ -3155,14 +2743,14 @@ switch ($action = Req::val('action'))
             Flyspray::show_error(L('selfsupertasknotallowed'));
             break;
         }
-
+ 
 	// Check that the supertask_id looks like unsigned integer
 	if ( !preg_match("/^[1-9][0-9]{0,8}$/", Post::val('supertask_id')) ) {
 		Flyspray::show_error(L('invalidsupertaskid'));
 		break;
 	}
-
-	$sql = $db->query('SELECT project_id FROM {tasks} WHERE task_id = ?', array(Post::val('supertask_id')) );
+	
+	$sql = $db->Query('SELECT project_id FROM {tasks} WHERE task_id = ?', array(Post::val('supertask_id')) );
 	// check that supertask_id is a valid task id
 	$parent = $db->fetchRow($sql);
 	if (!$parent) {
@@ -3173,7 +2761,7 @@ switch ($action = Req::val('action'))
 	// if the user has not the permission to view all tasks, check if the task
 	// is in tasks allowed to see, otherwise tell that the task does not exist.
 	if (!$user->perms('view_tasks')) {
-            $taskcheck = Flyspray::getTaskDetails(Post::val('supertask_id'));
+            $taskcheck = Flyspray::GetTaskDetails(Post::val('supertask_id'));
             if (!$user->can_view_task($taskcheck)) {
                 Flyspray::show_error(L('invalidsupertaskid'));
                 break;
@@ -3187,7 +2775,7 @@ switch ($action = Req::val('action'))
         }
 
         // finally looks like all the checks are valid so update the supertask_id for the current task
-        $db->query('UPDATE  {tasks}
+        $db->Query('UPDATE  {tasks}
                        SET  supertask_id = ?
                      WHERE  task_id = ?',
         array(Post::val('supertask_id'),Post::val('task_id')));
@@ -3237,103 +2825,143 @@ switch ($action = Req::val('action'))
 
         Notifications::NotificationsHaveBeenRead($validids);
         break;
+    case 'task.bulkupdate':
+        # TODO check if the user has the right to do each action on each task id he send with the form!
+        # TODO check if tasks have open subtasks before closing
+        # TODO SQL Transactions with rollback function if something went wrong in the middle of bulk action
+        $massopsenabled=0; # 20150305 disabled for 1.0 release until proper checks are done
+        if($massopsenabled==1){
 
-	case 'admin.xmppcleanup':
-		if (!$user->perms('is_admin')) {
-			break;
-		}
+        // TODO: Log events in a later version.
 
-		if (isset($_POST['xmppcleanup']) && is_string($_POST['xmppcleanup'])) {
-			if ($_POST['xmppcleanup'] === 'year') {
-				if ($db->dbtype == 'pgsql') {
-					// recipient_id is chronologic
-					$recipientres = $db->query("SELECT recipient_id
-						FROM {notification_recipients} r
-						JOIN {notification_messages} m ON r.message_id=m.message_id
-						WHERE r.notify_method='j'
-						AND to_timestamp(time_created) < (CURRENT_TIMESTAMP - INTERVAL '1 year')
-						ORDER BY recipient_id DESC LIMIT 1");
-					$recipientrow=$db->fetchRow($recipientres);
-				} else {
-					// recipient_id is chronologic
-					$recipientres = $db->query("SELECT recipient_id
-						FROM {notification_recipients} r
-						JOIN {notification_messages} m ON r.message_id=m.message_id
-						WHERE r.notify_method='j'
-						AND FROM_UNIXTIME(time_created) < (CURRENT_TIMESTAMP - INTERVAL 1 year)
-						ORDER BY recipient_id DESC LIMIT 1");
-					$recipientrow = $db->fetchRow($recipientres);
-				}
+        if(Post::val('updateselectedtasks') == "true") {
+            //process quick actions
+            switch(Post::val('bulk_quick_action'))
+            {
+                case 'bulk_take_ownership':
+                    Backend::assign_to_me(Post::val('user_id'),Post::val('ids'));
+                    break;
+                case 'bulk_start_watching':
+                    Backend::add_notification(Post::val('user_id'),Post::val('ids'));
+                    break;
+                case 'bulk_stop_watching':
+                    Backend::remove_notification(Post::val('user_id'),Post::val('ids'));
+                    break;
+            }
 
-				if ($recipientrow) {
-					$db->query("DELETE FROM {notification_recipients} WHERE notify_method='j' AND recipient_id <=?", array($recipientrow[0]));
-					$deleted = $db->affectedRows();
-					$_SESSION['SUCCESS'] = $deleted == 1 ? '1 deleted unsent xmpp notification.': 'Deleted '.$deleted.' unsent xmpp notifications.';
-					Flyspray::redirect(createURL('admin', 'checks'));
-				}
-				// TODO delete also the related notification_messages, but only I if that have no other recipient method entries (like notify_method='o' for 'online')  
-			}
-		}
-		Flyspray::redirect(createURL('admin', 'checks'));
-		break;
+            //Process the tasks.
+            $columns = array();
+            $values = array();
 
-case 'task.bulkupdate':
+            //determine the tasks properties that have been modified.
+            if(!Post::val('bulk_status')==0){
+                array_push($columns,'item_status');
+                array_push($values, Post::val('bulk_status'));
+            }
+            if(!Post::val('bulk_percent_complete')==0){
+                array_push($columns,'percent_complete');
+                array_push($values, Post::val('bulk_percent_complete'));
+            }
+            if(!Post::val('bulk_task_type')==0){
+                array_push($columns,'task_type');
+                array_push($values, Post::val('bulk_task_type'));
+            }
+            if(!Post::val('bulk_category')==0){
+                array_push($columns,'product_category');
+                array_push($values, Post::val('bulk_category'));
+            }
+            if(!Post::val('bulk_os')==0){
+                array_push($columns,'operating_system');
+                array_push($values, Post::val('bulk_os'));
+            }
+            if(!Post::val('bulk_severity')==0){
+                array_push($columns,'task_severity');
+                array_push($values, Post::val('bulk_severity'));
+            }
+            if(!Post::val('bulk_priority')==0){
+                array_push($columns,'task_priority');
+                array_push($values, Post::val('bulk_priority'));
+            }
+            if(!Post::val('bulk_reportedver')==0){
+                array_push($columns,'product_version');
+                array_push($values, Post::val('bulk_reportedver'));
+            }
+            if(!Post::val('bulk_due_version')==0){
+                array_push($columns,'closedby_version');
+                array_push($values, Post::val('bulk_due_version'));
+            }
+            # TODO Does the user has similiar rights in current and target projects?
+            # TODO Does a task has subtasks? What happens to them? What if they are open/closed?
+            # But: Allowing task dependencies between tasks in different projects is a feature!
+            if(!Post::val('bulk_projects')==0){
+                array_push($columns,'project_id');
+                array_push($values, Post::val('bulk_projects'));
+            }
+            if(!is_null(Post::val('bulk_due_date'))){
+                array_push($columns,'due_date');
+                array_push($values, Flyspray::strtotime(Post::val('bulk_due_date')));
+            }
 
-	# TODO check if the user has the right to do each action on each task id he send with the form!
-	# TODO check if tasks have open subtasks before closing
-	# TODO SQL Transactions with rollback function if something went wrong in the middle of bulk action
-	# disabled by default and if currently allowed only for admins until proper checks are done
+            //only process if one of the task fields has been updated.
+            if(!array_count_values($columns)==0 && Post::val('ids')){
+                //add the selected task id's to the query string
+                $task_ids = Post::val('ids');
+                $valuesAndTasks = array_merge_recursive($values,$task_ids);
 
-	if (isset($fs->prefs['massops']) && $fs->prefs['massops']==1 && $user->perms('is_admin')){
+                //execute the database update on all selected queries
+                $update = $db->Query("UPDATE  {tasks}
+                                     SET  ".join('=?, ', $columns)."=?
+                                   WHERE". substr(str_repeat(' task_id = ? OR ', count(Post::val('ids'))), 0, -3), $valuesAndTasks);
+            }
 
-		// TODO: Log events in a later version.
+            //Set the assignments
+            if(Post::val('bulk_assignment')){
+                // Delete the current assignees for the selected tasks
+                $db->Query("DELETE FROM {assigned} WHERE". substr(str_repeat(' task_id = ? OR ', count(Post::val('ids'))), 0, -3),Post::val('ids'));
 
-		$task_ids=filter_var($_POST['ids'], FILTER_VALIDATE_INT, FILTER_FORCE_ARRAY);
+                // Convert assigned_to and store them in the 'assigned' table
+                foreach ((array)Post::val('ids') as $id){
+                    //iterate the users that are selected on the user list.
+                    foreach ((array) Post::val('bulk_assignment') as $assignee){
+                        //if 'noone' has been selected then dont do the database update.
+                        if(!$assignee == 0){
+                            //insert the task and user id's into the assigned table.
+                            $db->Query('INSERT INTO  {assigned}
+                                             (task_id,user_id)
+                                     VALUES  (?, ?)',array($id,$assignee));
+                        }
+                    }
+                }
+            }
 
-		if (Post::val('updateselectedtasks') == 'true') {
+            // set success message
+            $_SESSION['SUCCESS'] = L('tasksupdated');
+            break;
+        }
+        //bulk close
+        else {
+            if (!Post::val('resolution_reason')) {
+                Flyspray::show_error(L('noclosereason'));
+                break;
+            }
+            $task_ids = Post::val('ids');
+            foreach($task_ids as $task_id) {
+                $task = Flyspray::GetTaskDetails($task_id);
+                if (!$user->can_close_task($task)) {
+                    continue;
+                }
 
-			// process quick actions
-			switch(Post::val('bulk_quick_action')){
-			case 'bulk_take_ownership':
-				Backend::assign_to_me(Post::val('user_id'), Post::val('ids'));
-				break;
-			case 'bulk_start_watching':
-				Backend::add_notification(Post::val('user_id'), Post::val('ids'));
-				break;
-			case 'bulk_stop_watching':
-				Backend::remove_notification(Post::val('user_id'), Post::val('ids'));
-				break;
-			}
+                if ($task['is_closed']) {
+                    continue;
+                }
 
-			$updateresult=Backend::updateTasks($_POST);
-			break;
-
-		} else {
-			// bulk close
-			if (!Post::val('resolution_reason')) {
-				Flyspray::show_error(L('noclosereason'));
-				break;
-			}
-
-			foreach ($task_ids as $task_id) {
-				$task = Flyspray::getTaskDetails($task_id);
-				if (!$user->can_close_task($task)) {
-					continue;
-				}
-
-				if ($task['is_closed']) {
-					continue;
-				}
-
-				Backend::close_task($task_id, Post::val('resolution_reason'), Post::val('closure_comment', ''), Post::val('mark100', false));
-			}
-			$_SESSION['SUCCESS'] = L('taskclosedmsg');
-			break;
-		}
-
-	} # end if massopsenabled
-	else{
-		Flyspray::show_error(L('massopsdisabled'));
-	}
-
-} // end switch
+                Backend::close_task($task_id, Post::val('resolution_reason'), Post::val('closure_comment', ''), Post::val('mark100', false));
+            }
+            $_SESSION['SUCCESS'] = L('taskclosedmsg');
+            break;
+        }
+        } # end if massopsenabled
+        else{
+        	Flyspray::show_error(L('massopsdisabled'));
+        }
+    }

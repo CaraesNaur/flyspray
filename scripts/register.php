@@ -12,17 +12,17 @@ if (!defined('IN_FS')) {
 $page->setTitle($fs->prefs['page_title'] . L('registernewuser'));
 
 if (!$user->isAnon()) {
-    Flyspray::redirect($baseurl);
+    Flyspray::Redirect($baseurl);
 }
 
 if ($user->can_register()) {
     // 32 is the length of the magic_url
     if (Req::has('magic_url') && strlen(Req::val('magic_url')) == 32) {
         // If the user came here from their notification link
-        $sql = $db->query('SELECT * FROM {registrations} WHERE magic_url = ?',
+        $sql = $db->Query('SELECT * FROM {registrations} WHERE magic_url = ?',
                           array(Get::val('magic_url')));
 
-        if (!$db->countRows($sql)) {
+        if (!$db->CountRows($sql)) {
             Flyspray::show_error(18);
         }
 
@@ -31,8 +31,6 @@ if ($user->can_register()) {
 		if($fs->prefs['captcha_securimage']){
 			$captchaoptions = array(
 				'input_name' => 'captcha_code',
-				'show_image_url' => 'securimage.php',
-				'show_refresh_button' => false,
 				'show_audio_button' => false,
 				'disable_flash_fallback' => true
 			);
@@ -46,8 +44,6 @@ if ($user->can_register()) {
 	if($fs->prefs['captcha_securimage']){
 		$captchaoptions = array(
 			'input_name' => 'captcha_code',
-			'show_image_url' => 'securimage.php',
-			'show_refresh_button' => false,
 			'show_audio_button' => false,
 			'disable_flash_fallback' => true,
 			'image_attributes' =>array('style'=>'')

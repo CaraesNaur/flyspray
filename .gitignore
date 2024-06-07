@@ -12,8 +12,3 @@ composer.phar
 /avatars/*
 /lang/*.php.bak
 /lang/*.php.safe
-.vscode/*
-!.vscode/settings.json
-!.vscode/tasks.json
-!.vscode/launch.json
-!.vscode/extensions.json

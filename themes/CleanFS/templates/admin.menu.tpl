@@ -37,7 +37,4 @@
   <a id="translationslink"
      <?php if(isset($_GET['area']) and $_GET['area'] == 'translations') echo $activeclass; ?>
      href="<?php echo Filters::noXSS(CreateURL('admin', 'translations')); ?>"><?php echo Filters::noXSS(L('translations')); ?></a>
-  <a id="checkslink"
-     <?php if(isset($_GET['area']) and $_GET['area'] == 'checks') echo $activeclass; ?>
-     href="<?php echo Filters::noXSS(CreateURL('admin', 'checks')); ?>"><?php echo Filters::noXSS(L('adminchecks')); ?></a>     
 </div>

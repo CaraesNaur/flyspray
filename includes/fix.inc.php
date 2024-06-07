@@ -12,13 +12,8 @@ ini_set('display_errors', 1);
 ini_set('html_errors', 0);
 
 //error_reporting(E_ALL);
-if(version_compare(PHP_VERSION, '7.2.0') >= 0) {
-	# temporary for php7.2+ (2017-11-30)
-	# not all parts of Flyspray and 3rd party libs like ADODB 5.20.9 not yet 'since-php7.2-deprecated'-ready
-	error_reporting(E_ALL & ~E_STRICT & ~E_DEPRECATED);
-}else{
-	error_reporting(E_ALL & ~E_STRICT);
-}
+error_reporting(E_ALL & ~E_STRICT);
+
 // our default charset
 
 ini_set('default_charset','utf-8');
@@ -57,21 +52,6 @@ ini_set('auto_detect_line_endings', 0);
 if(!function_exists('password_hash')){
 	require_once dirname(__FILE__).'/password_compat.php';
 }
-
-# for php < php.5.6
-if(!function_exists('hash_equals')) {
-	function hash_equals($str1, $str2) {
-		if(strlen($str1) != strlen($str2)) {
-			return false;
-		} else {
-			$res = $str1 ^ $str2;
-			$ret = 0;
-			for($i = strlen($res) - 1; $i >= 0; $i--) $ret |= ord($res[$i]);
-			return !$ret;
-		}
-	}
-}
-
 
 ini_set('include_path', join( PATH_SEPARATOR, array(
   dirname(__FILE__) . '/external' ,
@@ -182,27 +162,19 @@ if(!isset($_SERVER['SERVER_NAME']) && php_sapi_name() === 'cli') {
     $_SERVER['SERVER_NAME'] = php_uname('n');
 }
 
-/** 
- * For reasons outside Flyspray sources, used extensions may throw Exceptions.
- *
- * for a good example see this article
- * http://ilia.ws/archives/107-Another-unserialize-abuse.html
- */
-function flyspray_exception_handler($exception)
-{
-	if (defined('DEBUG_EXCEPTION') && DEBUG_EXCEPTION==true) {
-		echo "<pre>";
-		var_dump(debug_backtrace());
-		echo "</pre>";
-	}
+//for reasons outside flsypray, the PHP core may throw Exceptions in PHP5
+// for a good example see this article
+// http://ilia.ws/archives/107-Another-unserialize-abuse.html
 
-	die(
-		'Unhandled exception: '
-		. htmlspecialchars($exception->getMessage(), ENT_QUOTES, 'utf-8') 
-		. '<br/>This should <strong>never</strong> happen, please inform Flyspray Developers.'
-		. '<br/><br/>'
-		. 'If you are an Administrator of this Flyspray installation you might enable <strong>temporarly!</strong> <em>DEBUG_EXCEPTION</em> in <em>constants.inc.php</em> for more details.'
-	);
+function flyspray_exception_handler($exception) {
+    // Sometimes it helps removing temporary comments from the following three lines.
+    // echo "<pre>";
+    // var_dump(debug_backtrace());
+    // echo "</pre>";
+    die("Completely unexpected exception: " .
+        htmlspecialchars($exception->getMessage(),ENT_QUOTES, 'utf-8')  . "<br/>" .
+      "This should <strong> never </strong> happend, please inform Flyspray Developers");
+
 }
 
 set_exception_handler('flyspray_exception_handler');

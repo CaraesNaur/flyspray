@@ -2,8 +2,8 @@
 /**
  * Adds simple <br />s
  *
- * @license GPL 2 (http://www.gnu.org/licenses/gpl.html)
- * @author Florian Schmitz
+ * @license    GPL 2 (http://www.gnu.org/licenses/gpl.html)
+ * @author     Florian Schmitz floele at gmail dot com
  */
 
 if(!defined('DOKU_INC')) define('DOKU_INC',realpath(dirname(__FILE__).'/../../').'/');
@@ -22,7 +22,7 @@ class syntax_plugin_newline extends DokuWiki_Syntax_Plugin {
     function getInfo(){
         return array(
             'author' => 'Florian Schmitz',
-            'email'  => '',
+            'email'  => 'floele@gmail.com',
             'date'   => '2005-12-17',
             'name'   => '<br /> Plugin',
             'desc'   => 'Enables simple newlines',

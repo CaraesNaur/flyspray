@@ -2,8 +2,8 @@
 // +----------------------------------------------------------------------
 // | PHP Source
 // +----------------------------------------------------------------------
-// | Copyright (C) 2006  by Cristian Rodriguez R
-// | Copyright (C) 2007  by Florian Schmitz
+// | Copyright (C) 2006  by Cristian Rodriguez R <judas.iscariote@flyspray.org>
+// | Copyright (C) 2007  by Florian  Florian Schmitz <floele@flyspray.org>
 // +----------------------------------------------------------------------
 // |
 // | Copyright: See COPYING file that comes with this distribution
@@ -21,8 +21,6 @@ define('APPLICATION_PATH', dirname(BASEDIR));
 define('OBJECTS_PATH', APPLICATION_PATH . '/includes');
 require_once OBJECTS_PATH . '/class.flyspray.php';
 define('CONFIG_PATH', Flyspray::get_config_path(APPLICATION_PATH));
-
-#define('DEBUG_SQL', 1);
 
 define('TEMPLATE_FOLDER', BASEDIR . '/templates/');
 $conf  = @parse_ini_file(CONFIG_PATH, true) or die('Cannot open config file at ' . CONFIG_PATH);
@@ -68,8 +66,8 @@ define('DOMAIN_HASH', md5($_SERVER['SERVER_NAME'] . (int) $_SERVER['SERVER_PORT'
 define('CACHE_DIR', Flyspray::get_tmp_dir() . DIRECTORY_SEPARATOR . DOMAIN_HASH);
 
 // Get installed version
-$sql = $db->query('SELECT pref_value FROM {prefs} WHERE pref_name = ?', array('fs_ver'));
-$installed_version = $db->fetchOne($sql);
+$sql = $db->Query('SELECT pref_value FROM {prefs} WHERE pref_name = ?', array('fs_ver'));
+$installed_version = $db->FetchOne($sql);
 
 $page = new Tpl;
 $page->assign('title', 'Upgrade ');
@@ -94,18 +92,18 @@ $folders = glob_compat(BASEDIR . '/upgrade/[0-9]*');
 usort($folders, 'version_compare'); // start with lowest version
 
 if (Post::val('upgrade')) {
-	$uplog=array();
-	$uplog[]="Start database transaction";
-	$db->dblink->startTrans();
-	fix_duplicate_list_entries(true);
-	foreach ($folders as $folder) {
-		if (version_compare($installed_version, $folder, '<=')) {
-			$uplog[]="Start <strong>$installed_version</strong> to <strong>$folder</strong>";
-			$uplog[]= execute_upgrade_file($folder, $installed_version);
-			$uplog[]="End <strong>$installed_version</strong> to <strong>$folder</strong>";
-			$installed_version = $folder;
-		}
-	}
+    $uplog=array();
+    $uplog[]="Start database transaction";
+    $db->dblink->StartTrans();
+    fix_duplicate_list_entries(true);
+    foreach ($folders as $folder) {
+        if (version_compare($installed_version, $folder, '<=')) {
+            $uplog[]="Start $installed_version to $folder";
+            $uplog[]= execute_upgrade_file($folder, $installed_version);
+            $installed_version = $folder;
+            $uplog[]="End $installed_version to $folder";
+        }
+    }
 
     # maybe as Filter: $out=html2wiki($input, 'wikistyle'); and $out=wiki2html($input, 'wikistyle') ?
     # No need for any filter, because dokuwiki format wouldn't be touched anyway. But maybe ask the user
@@ -122,28 +120,25 @@ if (Post::val('upgrade')) {
         $page->assign('conversion', false);
     }
 
+    // we should be done at this point
+    $db->Query('UPDATE {prefs} SET pref_value = ? WHERE pref_name = ?', array($fs->version, 'fs_ver'));
+    
     // Fix the sequence in tasks table for PostgreSQL.
     if ($db->dblink->dataProvider == 'postgres') {
-        $rslt = $db->query('SELECT MAX(task_id) FROM {tasks}');
-        $maxid = $db->fetchOne($rslt);
+        $rslt = $db->Query('SELECT MAX(task_id) FROM {tasks}');
+        $maxid = $db->FetchOne($rslt);
         // The correct sequence should normally have a name containing at least both the table and column name in this format. 
-        $rslt = $db->query('SELECT relname FROM pg_class WHERE NOT relname ~ \'pg_.*\' AND relname LIKE \'%' . $conf['database']['dbprefix'] . 'tasks_task_id%\' AND relkind = \'S\'');
-        if ($db->countRows($rslt) == 1) {
-            $seqname = $db->fetchOne($rslt);
-            $db->query('SELECT setval(?, ?)', array($seqname, $maxid));
+        $rslt = $db->Query('SELECT relname FROM pg_class WHERE NOT relname ~ \'pg_.*\' AND relname LIKE \'%' . $conf['database']['dbprefix'] . 'tasks_task_id%\' AND relkind = \'S\'');
+        if ($db->CountRows($rslt) == 1) {
+            $seqname = $db->FetchOne($rslt);
+            $db->Query('SELECT setval(?, ?)', array($seqname, $maxid));
         }
     }
-
-	// we should be done at this point
-	$db->query('UPDATE {prefs} SET pref_value = ? WHERE pref_name = ?', array($fs->version, 'fs_ver'));
-	$uplog[]="Final Step: Set version in {prefs} to the version in class.flyspray.php: End <strong>$installed_version</strong> to <strong>$fs->version</strong>";
-
-	$result=$db->dblink->completeTrans();
-        $uplog[]= 'Transaction completed: '.$result;
-	
-	$installed_version = $fs->version;
-	$page->assign('done', true);
-	$page->assign('upgradelog', $uplog);
+    // */
+    $db->dblink->CompleteTrans();
+    $installed_version = $fs->version;
+    $page->assign('done', true);
+    $page->assign('upgradelog', $uplog);
 }
 
 function execute_upgrade_file($folder, $installed_version)
@@ -178,32 +173,32 @@ function execute_upgrade_file($folder, $installed_version)
             // $xml = str_replace('<table name="', '<table name="' . $conf['database']['dbprefix'], $xml);
             // Set the prefix for database objects ( before parsing)
             $schema->setPrefix($conf['database']['dbprefix'], false);
-            $schema->parseSchemaString($xml);
-            $schema->executeSchema(null, true);
+            $schema->ParseSchemaString($xml);
+            $schema->ExecuteSchema(null, true);
         }
     }
 
     // Last but not least global prefs update
     if (isset($upgrade_info['fsprefs'])) {
-        $sql = $db->query('SELECT pref_name FROM {prefs}');
-        $existing = $db->fetchCol($sql);
+        $sql = $db->Query('SELECT pref_name FROM {prefs}');
+        $existing = $db->FetchCol($sql);
         // Add what is missing
         foreach ($upgrade_info['fsprefs'] as $name => $value) {
             if (!in_array($name, $existing)) {
-                $db->query('INSERT INTO {prefs} (pref_name, pref_value) VALUES (?, ?)', array($name, $value));
+                $db->Query('INSERT INTO {prefs} (pref_name, pref_value) VALUES (?, ?)', array($name, $value));
             }
         }
         // Delete what is too much
         foreach ($existing as $name) {
             if (!isset($upgrade_info['fsprefs'][$name])) {
-                $db->query('DELETE FROM {prefs} WHERE pref_name = ?', array($name));
+                $db->Query('DELETE FROM {prefs} WHERE pref_name = ?', array($name));
             }
         }
     }
 
-    $db->query('UPDATE {prefs} SET pref_value = ? WHERE pref_name = ?', array(basename($upgrade_path), 'fs_ver'));
+    $db->Query('UPDATE {prefs} SET pref_value = ? WHERE pref_name = ?', array(basename($upgrade_path), 'fs_ver'));
     #$page->assign('done', true);
-    return "Wrote <strong>".basename($upgrade_path)."</strong> into database table {prefs} field fs_ver.";
+    return "Write ".basename($upgrade_path)." into table {prefs} fs_ver in database";
 }
 
  /**
@@ -401,7 +396,7 @@ function fix_duplicate_list_entries($doit=true) {
     // -> Reports (subcategory - should be allowed)
     // -> Reports (I added a fake duplicate - should not be allowed)
 
-    $sql = $db->query('SELECT MIN(os_id) id, project_id, os_name
+    $sql = $db->Query('SELECT MIN(os_id) id, project_id, os_name
                           FROM {list_os}
                       GROUP BY project_id, os_name
                         HAVING COUNT(*) > 1');
@@ -414,7 +409,7 @@ function fix_duplicate_list_entries($doit=true) {
         }
     }
 
-    $sql = $db->query('SELECT MIN(resolution_id) id, project_id, resolution_name
+    $sql = $db->Query('SELECT MIN(resolution_id) id, project_id, resolution_name
                           FROM {list_resolution}
                       GROUP BY project_id, resolution_name
                         HAVING COUNT(*) > 1');
@@ -427,7 +422,7 @@ function fix_duplicate_list_entries($doit=true) {
         }
     }
 
-    $sql = $db->query('SELECT MIN(status_id) id, project_id, status_name
+    $sql = $db->Query('SELECT MIN(status_id) id, project_id, status_name
                           FROM {list_status}
                       GROUP BY project_id, status_name
                         HAVING COUNT(*) > 1');
@@ -439,7 +434,7 @@ function fix_duplicate_list_entries($doit=true) {
             $uplog[]='<span class="warning">'.count($dups).' duplicate entries in {list_status}</span>';
         }
     }
-    $sql = $db->query('SELECT MIN(tasktype_id) id, project_id, tasktype_name
+    $sql = $db->Query('SELECT MIN(tasktype_id) id, project_id, tasktype_name
                           FROM {list_tasktype}
                       GROUP BY project_id, tasktype_name
                         HAVING COUNT(*) > 1');
@@ -452,7 +447,7 @@ function fix_duplicate_list_entries($doit=true) {
         }
     }
 
-    $sql = $db->query('SELECT MIN(version_id) id, project_id, version_name
+    $sql = $db->Query('SELECT MIN(version_id) id, project_id, version_name
                           FROM {list_version}
                       GROUP BY project_id, version_name
                         HAVING COUNT(*) > 1');
@@ -472,7 +467,7 @@ function fix_os_table($dups) {
     foreach ($dups as $dup) {
         $update_id = $dup['id'];
 
-        $sql = $db->query('SELECT os_id id
+        $sql = $db->Query('SELECT os_id id
                              FROM {list_os}
                             WHERE project_id = ? AND os_name = ?',
                           array($dup['project_id'], $dup['os_name']));
@@ -482,11 +477,11 @@ function fix_os_table($dups) {
                 continue;
             }
 
-            $db->query('UPDATE {tasks}
+            $db->Query('UPDATE {tasks}
                            SET operating_system = ?
                          WHERE operating_system = ?',
                        array($update_id, $entry['id']));
-            $db->query('DELETE FROM {list_os} WHERE os_id = ?', array($entry['id']));
+            $db->Query('DELETE FROM {list_os} WHERE os_id = ?', array($entry['id']));
         }
     }
 }
@@ -497,7 +492,7 @@ function fix_resolution_table($dups) {
     foreach ($dups as $dup) {
         $update_id = $dup['id'];
 
-        $sql = $db->query('SELECT resolution_id id
+        $sql = $db->Query('SELECT resolution_id id
                              FROM {list_resolution}
                             WHERE project_id = ? AND resolution_name = ?',
                           array($dup['project_id'], $dup['resolution_name']));
@@ -507,11 +502,11 @@ function fix_resolution_table($dups) {
                 continue;
             }
 
-            $db->query('UPDATE {tasks}
+            $db->Query('UPDATE {tasks}
                            SET resolution_reason = ?
                          WHERE resolution_reason = ?',
                        array($update_id, $entry['id']));
-            $db->query('DELETE FROM {list_resolution} WHERE resolution_id = ?', array($entry['id']));
+            $db->Query('DELETE FROM {list_resolution} WHERE resolution_id = ?', array($entry['id']));
         }
     }
 }
@@ -522,7 +517,7 @@ function fix_status_table($dups) {
     foreach ($dups as $dup) {
         $update_id = $dup['id'];
 
-        $sql = $db->query('SELECT status_id id
+        $sql = $db->Query('SELECT status_id id
                              FROM {list_status}
                             WHERE project_id = ? AND status_name = ?',
                           array($dup['project_id'], $dup['status_name']));
@@ -532,11 +527,11 @@ function fix_status_table($dups) {
                 continue;
             }
 
-            $db->query('UPDATE {tasks}
+            $db->Query('UPDATE {tasks}
                            SET item_status = ?
                          WHERE item_status = ?',
                        array($update_id, $entry['id']));
-            $db->query('DELETE FROM {list_status} WHERE status_id = ?', array($entry['id']));
+            $db->Query('DELETE FROM {list_status} WHERE status_id = ?', array($entry['id']));
         }
     }
 }
@@ -547,7 +542,7 @@ function fix_tasktype_table($dups) {
     foreach ($dups as $dup) {
         $update_id = $dup['id'];
 
-        $sql = $db->query('SELECT tasktype_id id
+        $sql = $db->Query('SELECT tasktype_id id
                              FROM {list_tasktype}
                             WHERE project_id = ? AND tasktype_name = ?',
                           array($dup['project_id'], $dup['tasktype_name']));
@@ -557,11 +552,11 @@ function fix_tasktype_table($dups) {
                 continue;
             }
 
-            $db->query('UPDATE {tasks}
+            $db->Query('UPDATE {tasks}
                            SET task_type = ?
                          WHERE task_type = ?',
                        array($update_id, $entry['id']));
-            $db->query('DELETE FROM {list_tasktype} WHERE tasktype_id = ?', array($entry['id']));
+            $db->Query('DELETE FROM {list_tasktype} WHERE tasktype_id = ?', array($entry['id']));
         }
     }
 }
@@ -572,7 +567,7 @@ function fix_version_table($dups) {
     foreach ($dups as $dup) {
         $update_id = $dup['id'];
 
-        $sql = $db->query('SELECT version_id id
+        $sql = $db->Query('SELECT version_id id
                              FROM {list_version}
                             WHERE project_id = ? AND version_name = ?',
                           array($dup['project_id'], $dup['version_name']));
@@ -582,11 +577,11 @@ function fix_version_table($dups) {
                 continue;
             }
 
-            $db->query('UPDATE {tasks}
+            $db->Query('UPDATE {tasks}
                            SET product_version = ?
                          WHERE product_version = ?',
                        array($update_id, $entry['id']));
-            $db->query('DELETE FROM {list_version} WHERE version_id = ?', array($entry['id']));
+            $db->Query('DELETE FROM {list_version} WHERE version_id = ?', array($entry['id']));
         }
     }
 }
@@ -603,7 +598,7 @@ function convert_old_entries($table, $column, $key) {
     // made with development version before fixing ckeditors configuration
     // settings. You can't have everything in a limited time frame, this
     // should be just good enough.
-    $sql = $db->query("SELECT $key, $column "
+    $sql = $db->Query("SELECT $key, $column "
             . "FROM {". $table . "} "
             . "WHERE $column NOT LIKE '<%'");
     $entries = $db->fetchAllArray($sql);
@@ -640,7 +635,7 @@ function convert_old_entries($table, $column, $key) {
         // the same as what ckeditor produces.
         $data = '<p>' . $data . '</p>';
 
-        $db->query("UPDATE {". $table . "} "
+        $db->Query("UPDATE {". $table . "} "
         . "SET $column = ?"
         . "WHERE $key = ?",
         array($data, $id));
