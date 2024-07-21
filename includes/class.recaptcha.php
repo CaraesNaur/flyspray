@@ -4,12 +4,9 @@
 */
 class recaptcha
 {
-	static function verify(){
-		global $fs;
 
-		if (!isset($_POST['g-recaptcha-response']) or !is_string($_POST['g-recaptcha-response'])) {
-			return false;
-		}
+	function verify(){
+		global $fs;
 
 		$url = 'https://www.google.com/recaptcha/api/siteverify';
 		$data = array(
