@@ -2288,23 +2288,27 @@ switch ($action = Req::val('action'))
 				// Check for duplicates on the same sub-level under same parent category.
 				// First, we'll have to find the right parent for the current category.
 				$sql = $db->query('
-					SELECT *
-					FROM {list_category}
-					WHERE project_id = ?
-					AND lft < ?
-					AND rgt > ?
-					AND lft = (
-						SELECT MAX(lft)
-						FROM {list_category}
-						WHERE lft < ?
-						AND rgt > ?
-					)',
+					SELECT
+						parent.*
+					FROM
+						{list_category} AS node,
+						{list_category} AS parent
+					WHERE
+						node.project_id = ?
+						AND
+						node.lft BETWEEN parent.lft AND parent.rgt
+						AND
+						parent.project_id = node.project_id
+						AND
+						parent.category_id != node.category_id
+						AND
+						node.category_id = ?
+					ORDER BY
+						parent.lft DESC
+					LIMIT 1',
 					array(
 						$proj->id,
-						intval($listlft[$id]),
-						intval($listrgt[$id]),
-						intval($listlft[$id]),
-						intval($listrgt[$id])
+						$id
 					)
 				);
 				$parent = $db->fetchRow($sql);
