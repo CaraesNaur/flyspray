@@ -226,7 +226,6 @@ class Project
 		global $db, $conf;
 
 		// start with empty arrays
-		$right = array();
 		$cats = array();
 		$g_cats = array();
 
@@ -234,56 +233,62 @@ class Project
 		if (is_null($project_id)) {
 			$project_id = $this->id;
 			if ($this->id != 0) {
-				$g_cats = $this->listCategories(0);
+				$g_cats = $this->listCategories(0, $hide_hidden, $remove_root, $depth);
 			}
 		}
 
-		// retrieve the left and right value of the root node
-		$result = $db->query("SELECT lft, rgt
-                                FROM {list_category}
-                               WHERE category_name = 'root' AND lft = 1 AND project_id = ?",
-                             array($project_id));
-		$row = $db->fetchRow($result);
-
-		$groupby = $db->getColumnNames('{list_category}', 'c.category_id', 'c.');
-
-		// now, retrieve all descendants of the root node
-		$result = $db->query('SELECT c.category_id, c.category_name, c.*, count(t.task_id) AS used_in_tasks
-			FROM {list_category} c
-			LEFT JOIN {tasks} t ON (t.product_category = c.category_id)
-			WHERE c.project_id = ?
-			AND lft BETWEEN ? AND ?
-			GROUP BY ' . $groupby . '
-			ORDER BY lft ASC',
-			array($project_id, intval($row['lft']), intval($row['rgt'])));
+		$result = $db->query('
+			SELECT
+				c.*,
+				u.user_name as owner_user_name,
+				COUNT(distinct tasks.task_id) AS used_in_tasks
+			FROM
+				(
+					SELECT
+						node.category_id,
+						node.category_name,
+						node.project_id,
+						node.show_in_list,
+						node.category_owner,
+						node.lft,
+						node.rgt,
+						CONCAT( REPEAT(\'... \', COUNT(parent.category_name) - ' . ($remove_root ? 2 : 1) . '), node.category_name) AS expanded_category_name,
+						(COUNT(parent.category_name) - 1) AS depth
+					FROM
+						{list_category} AS node
+					LEFT JOIN
+						{list_category} AS parent on parent.project_id = node.project_id
+					WHERE
+						node.lft BETWEEN parent.lft AND parent.rgt
+						AND
+						node.project_id = ?
+					GROUP BY
+						node.category_id
+					ORDER BY
+						node.lft
+				) c
+			LEFT JOIN
+				{tasks} AS tasks ON tasks.product_category = c.category_id
+			LEFT JOIN
+				{users} u on u.user_id = c.category_owner
+			GROUP BY
+				c.category_id
+			ORDER BY
+				c.project_id,
+				c.lft',
+			array($project_id)
+		);
 
 		while ($row = $db->fetchRow($result)) {
-			if ($hide_hidden && !$row['show_in_list'] && $row['lft'] != 1) {
+			if ($hide_hidden && !$row['show_in_list']) {
 				continue;
 			}
 
-			// check if we should remove a node from the stack
-			while (count($right) > 0 && $right[count($right)-1] < $row['rgt']) {
-				array_pop($right);
+			if ($remove_root && (int) $row['depth'] < 1) {
+				continue;
 			}
-			$cats[] = $row + array('depth' => count($right)-1);
 
-			// add this node to the stack
-			$right[] = $row['rgt'];
-		}
-
-		// Adjust output for select boxes
-		if ($depth) {
-			foreach ($cats as $key => $cat) {
-				if ($cat['depth'] > 0) {
-					$cats[$key]['category_name'] = str_repeat('...', $cat['depth']) . $cat['category_name'];
-					$cats[$key]['1'] = str_repeat('...', $cat['depth']) . $cat['1'];
-				}
-			}
-		}
-
-		if ($remove_root) {
-			unset($cats[0]);
+			$cats[] = $row;
 		}
 
 		return array_merge($cats, $g_cats);
