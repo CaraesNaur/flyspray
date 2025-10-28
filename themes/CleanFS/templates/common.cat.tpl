@@ -84,12 +84,13 @@ if (count($categories)) : ?>
       <?php
       foreach ($categories as $row):
           $countlines++;
+          $can_delete = ($row['used_in_tasks'] == 0);
       ?>
       <tr class="depth<?php echo Filters::noXSS($row['depth']); ?>">
         <td class="first">
           <input type="hidden" name="lft[<?php echo Filters::noXSS($row['category_id']); ?>]" value="<?php echo Filters::noXSS($row['lft']); ?>" />
           <input type="hidden" name="rgt[<?php echo Filters::noXSS($row['category_id']); ?>]" value="<?php echo Filters::noXSS($row['rgt']); ?>" />
-          <span class="depthmark"><?php echo str_repeat('&rarr;', intval($row['depth'])); ?></span>
+          <span class="depthmark"><?php echo str_repeat('&rarr;', intval($row['depth']) - 1); ?></span>
           <input id="categoryname<?php echo Filters::noXSS($countlines); ?>" class="text" type="text" maxlength="40" name="list_name[<?php echo Filters::noXSS($row['category_id']); ?>]" value="<?php echo Filters::noXSS($row['category_name']); ?>" />
         </td>
         <td title="<?php echo Filters::noXSS(L('categoryownertip')); ?>">
@@ -100,9 +101,9 @@ if (count($categories)) : ?>
           <?php echo tpl_checkbox('show_in_list[' . $row['category_id'] . ']', $row['show_in_list'], 'showinlist'.$countlines); ?>
 
         </td>
-        <td title="<?php echo Filters::noXSS(L('listdeletetip')); ?>">
+        <td title="<?php echo ($can_delete ? Filters::noXSS(L('listdeletetip')) : Filters::noXSS(L('nodeleteusedcategory'))); ?>">
           <input id="delete<?php echo Filters::noXSS($row['category_id']); ?>" type="checkbox"
-          <?php if ($row['used_in_tasks']): ?>disabled="disabled"<?php endif; ?>
+          <?php if (!$can_delete): ?>disabled="disabled" style="cursor: not-allowed;"<?php endif; ?>
           name="delete[<?php echo Filters::noXSS($row['category_id']); ?>]" value="1" />
         </td>
         <td><?php echo $row['used_in_tasks'] >0 ? $row['used_in_tasks']:''; ?></td>

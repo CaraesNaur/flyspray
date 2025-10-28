@@ -1151,5 +1151,6 @@ Depending on the configuration at Google - "reCAPTCHA V2" or "Invisible reCAPTCH
 'remindinterval'          => 'Interval',
 'usernamenotchangeable'   => 'Username cannot be changed.',
 'zeroeffort'              => 'No effort.',
+'nodeleteusedcategory'    => 'Cannot delete category used by tasks',
 );
 ?>
