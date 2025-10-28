@@ -735,7 +735,13 @@ function tpl_date_formats($selected, $detailed = false)
  * not by names, lack of a generic optgroup feature, css-id, css-classes, disabled option.
  * Maybe rewrite a as tpl_select() ..
  *
- * @options array of values
+ * @param array $options array of items
+ * @param mixed $selected optional single or array of values to pre-select
+ * @param bool $labelIsValue optional use label for <option> values
+ * @param array $attr optional array of additional <option> attributes
+ * @param mixed $remove optional value ot omit from options
+ * @param string $label_idx optional key in items to use for option label
+ * @param string $value_idx optional key in items to use for option value
  * For optgroups, the values should be presorted by the optgroups
  * example:
  * $options=array(
@@ -744,7 +750,7 @@ function tpl_date_formats($selected, $detailed = false)
  * 	array(5,'project5',0)  # inactive project optgroup
  * ); tpl_options($options, 2)
 */
-function tpl_options($options, $selected = null, $labelIsValue = false, $attr = null, $remove = null)
+function tpl_options($options, $selected = null, $labelIsValue = false, $attr = null, $remove = null, $label_idx = null, $value_idx = null)
 {
 	$html = '';
 
@@ -755,11 +761,24 @@ function tpl_options($options, $selected = null, $labelIsValue = false, $attr = 
 
 	$lastoptgroup=0;
 	$optgroup=0;
-        $ingroup=false;
+	$ingroup=false;
+
 	foreach ($options as $idx=>$data) {
 		if (is_array($data)) {
-			$value = $data[0];
-			$label = $data[1];
+			if (!is_null($label_idx) && array_key_exists($label_idx, $data)) {
+				$label = $data[$label_idx];
+			}
+			else {
+				$label = $data[1];
+			}
+
+			if (!is_null($value_idx) && array_key_exists($value_idx, $data)) {
+				$value = $data[$value_idx];
+			}
+			else {
+				$value = $data[0];
+			}
+
 			# just a temp hack, we currently use optgroups only for project dropdown...
 			$optgroup=array_key_exists('project_is_active',$data) ? $data['project_is_active'] : 0;
 			if (array_key_exists('project_title', $data) && $optgroup!=$lastoptgroup) {
