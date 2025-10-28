@@ -50,7 +50,7 @@ $field_num = 3;
 	<td style="display:none">
 	<?php } ?>
             <select class="adminlist" name="product_category[]" id="category">
-              <?php echo tpl_options($proj->listCategories(), Req::val('product_category')); ?>
+              <?php echo tpl_options($proj->listCategories(), Req::val('product_category'), false, null, null, 'expanded_category_name'); ?>
 
             </select>
 	</td>

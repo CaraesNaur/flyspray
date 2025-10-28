@@ -378,7 +378,7 @@ function quick_edit(elem, id)
 		<span style="display:none">
 			<div style="float:right">
 				<select id="category" name="product_category">
-					<?php echo tpl_options($proj->listCategories(), Req::val('product_category', $task_details['product_category'])); ?>
+					<?php echo tpl_options($proj->listCategories(), Req::val('product_category', $task_details['product_category']), false, null, null, 'expanded_category_name'); ?>
 				</select>
 				<br/>
 				<a onclick="quick_edit(this.parentNode.parentNode, 'category')" href="javascript:void(0)" class="button"><?= L('confirmedit') ?></a>

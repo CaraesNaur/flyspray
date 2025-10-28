@@ -64,7 +64,7 @@ function checkContent() {
           <?php } ?>
             <label for="category"><?= eL('category') ?></label>
             <select class="adminlist" name="product_category" id="category">
-              <?php echo tpl_options($proj->listCategories(), Req::val('product_category')); ?>
+              <?php echo tpl_options($proj->listCategories(), Req::val('product_category'), false, null, null, 'expanded_category_name'); ?>
             </select>
           </li>
 

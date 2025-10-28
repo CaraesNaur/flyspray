@@ -194,7 +194,7 @@
 		    <?php } ?>
                         <label class="default multisel" for="cat"><?= eL('category') ?></label>
                         <select name="cat[]" id="cat" multiple="multiple" size="8">
-                            <?php echo tpl_options(array('' => L('allcategories')) + $proj->listCategories(), isset($_GET['cat'])?$_GET['cat']:''); ?>
+                            <?php echo tpl_options(array('' => L('allcategories')) + $proj->listCategories(), isset($_GET['cat'])?$_GET['cat']:'', false, null, null, 'expanded_category_name'); ?>
                         </select>
                     </div>
 
@@ -489,9 +489,8 @@ foreach ($tasks as $task): ?>
                 <?php array_unshift($categoryTypeList,L('notspecified')); ?>
                 <label for="bulk_category"><?php echo Filters::noXSS(L('category')); ?></label>
                 <select id="bulk_category" name="bulk_category">
-                    <?php echo tpl_options($categoryTypeList); ?>
+                    <?php echo tpl_options($categoryTypeList, null, false, null, null, 'expanded_category_name'); ?>
                 </select>
-
             </li>
 
             <!-- Assigned To-->

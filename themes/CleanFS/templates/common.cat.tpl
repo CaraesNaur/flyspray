@@ -42,7 +42,7 @@ $syscountlines++;
 <h3><?php echo $do=='pm' ? Filters::noXSS(L('categoriesproject')) : Filters::noXSS(L('categoriesglobal')); ?></h3>
 <?php
 $countlines = -1;
-$categories = $proj->listCategories($proj->id, false, false, false);
+$categories = $proj->listCategories($proj->id, false, false);
 if ( count($categories) ){
   $root = $categories[0];
   unset($categories[0]);
@@ -93,7 +93,7 @@ if (count($categories)) : ?>
           <input id="categoryname<?php echo Filters::noXSS($countlines); ?>" class="text" type="text" maxlength="40" name="list_name[<?php echo Filters::noXSS($row['category_id']); ?>]" value="<?php echo Filters::noXSS($row['category_name']); ?>" />
         </td>
         <td title="<?php echo Filters::noXSS(L('categoryownertip')); ?>">
-          <?php echo tpl_userselect('category_owner[' . $row['category_id'] . ']' . $countlines, $row['category_owner'], 'categoryowner' . $countlines); ?>
+          <?php echo tpl_userselect('category_owner[' . $row['category_id'] . ']' . $countlines, $row['owner_user_name'], 'categoryowner' . $countlines); ?>
 
         </td>
         <td title="<?php echo Filters::noXSS(L('listshowtip')); ?>">
@@ -151,7 +151,7 @@ if (count($categories)) : ?>
           <label for="parent_id"><?php echo Filters::noXSS(L('parent')); ?></label>
           <select id="parent_id" name="parent_id">
             <option value="<?php echo Filters::noXSS($root['category_id']); ?>"><?php echo Filters::noXSS(L('notsubcategory')); ?></option>
-            <?php echo tpl_options($proj->listCategories($proj->id, false), Req::val('parent_id')); ?>
+            <?php echo tpl_options($categories, Req::val('parent_id'), false, null, null, 'expanded_category_name'); ?>
           </select>
         </td>
         <td class="buttons">
